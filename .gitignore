@@ -6,7 +6,3 @@ obj/
 *.db
 *.sqlite
 *.log
-.dotnet/
-.dotnet9/
-.dotnet-install.ps1
-.nuget/
