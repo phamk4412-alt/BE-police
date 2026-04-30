@@ -1,9 +1,10 @@
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
+$repoRoot = $scriptRoot
 
 $env:DOTNET_CLI_HOME = Join-Path $repoRoot ".dotnet"
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "1"
 $env:NUGET_PACKAGES = Join-Path $repoRoot ".nuget\packages"
+$env:DOTNET_ROLL_FORWARD = "Major"
 
 Write-Host "Server BACKEND dang khoi dong..."
 Write-Host "API local: http://localhost:5055"
