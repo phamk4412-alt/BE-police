@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.db
+*.sqlite
+*.log
+.dotnet/
+.dotnet9/
+.dotnet-install.ps1
+.nuget/
