@@ -1,5 +1,9 @@
 bin/
 obj/
+.dotnet/
+.dotnet9/
+.nuget/
+.idea/
 .vs/
 *.user
 *.suo
