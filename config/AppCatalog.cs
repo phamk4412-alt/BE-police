@@ -44,6 +44,7 @@ public static class IncidentStatuses
 
 public static class AuditActions
 {
+    public const string Register = "auth.register";
     public const string LoginSuccess = "auth.login.success";
     public const string LoginFailed = "auth.login.failed";
     public const string Logout = "auth.logout";

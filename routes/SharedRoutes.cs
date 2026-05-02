@@ -10,6 +10,7 @@ public static class SharedRoutes
         app.MapGet("/api/health", SystemController.GetHealth);
 
         app.MapPost("/api/auth/login", AuthController.LoginAsync);
+        app.MapPost("/api/auth/register", AuthController.RegisterAsync);
         app.MapPost("/api/auth/logout", AuthController.LogoutAsync);
         app.MapGet("/api/auth/me", AuthController.GetCurrentUser);
 

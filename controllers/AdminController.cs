@@ -75,9 +75,12 @@ public static class AdminController
         return Results.Ok(await incidentService.GetStatisticsAsync(dbContext, cancellationToken));
     }
 
-    public static IResult GetAccountsAsync(AuthService authService)
+    public static async Task<IResult> GetAccountsAsync(
+        IncidentDbContext dbContext,
+        AuthService authService,
+        CancellationToken cancellationToken)
     {
-        return Results.Ok(authService.GetAccounts());
+        return Results.Ok(await authService.GetAccountsAsync(dbContext, cancellationToken));
     }
 
     public static IResult GetSystemHealth(IConfiguration configuration)

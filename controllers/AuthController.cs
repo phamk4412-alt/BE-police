@@ -18,7 +18,13 @@ public static class AuthController
         AuditService auditService,
         CancellationToken cancellationToken)
     {
-        if (!authService.TryAuthenticate(request.Username, request.Password, out var user))
+        var user = await authService.TryAuthenticateAsync(
+            dbContext,
+            request.Username,
+            request.Password,
+            cancellationToken);
+
+        if (user is null)
         {
             var attemptedUsername = string.IsNullOrWhiteSpace(request.Username)
                 ? "unknown"
@@ -50,6 +56,38 @@ public static class AuthController
             entityId: user.Username,
             summary: "Dang nhap thanh cong.",
             detail: $"{user.DisplayName} dang nhap vao he thong voi vai tro {user.Role}.",
+            actor: new ActorSnapshot(user.Username, user.DisplayName, user.Role),
+            cancellationToken: cancellationToken);
+
+        return Results.Ok(authService.CreateAuthenticatedResponse(user));
+    }
+
+    public static async Task<IResult> RegisterAsync(
+        RegisterRequest request,
+        HttpContext context,
+        IncidentDbContext dbContext,
+        AuthService authService,
+        AuditService auditService,
+        CancellationToken cancellationToken)
+    {
+        var (user, error) = await authService.RegisterAsync(dbContext, request, cancellationToken);
+        if (user is null)
+        {
+            return Results.BadRequest(new { message = error ?? "Khong the dang ky tai khoan." });
+        }
+
+        await context.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            authService.CreatePrincipal(user));
+
+        await auditService.WriteAsync(
+            dbContext,
+            context,
+            action: AuditActions.Register,
+            entityType: AuditEntities.Auth,
+            entityId: user.Username,
+            summary: "Dang ky tai khoan.",
+            detail: $"{user.DisplayName} dang ky tai khoan moi.",
             actor: new ActorSnapshot(user.Username, user.DisplayName, user.Role),
             cancellationToken: cancellationToken);
 
