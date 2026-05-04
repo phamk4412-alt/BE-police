@@ -189,7 +189,9 @@ public sealed record PoliceLocationRequest(
     double Latitude,
     double Longitude,
     string? ShiftId,
-    string? Status);
+    string? Status,
+    string? Username,
+    string? DisplayName);
 
 public sealed record PoliceLocationResponse(
     string Username,

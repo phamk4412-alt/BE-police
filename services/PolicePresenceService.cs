@@ -21,9 +21,16 @@ public sealed class PolicePresenceService
         ActorSnapshot actor,
         PoliceLocationRequest request)
     {
-        if (!string.Equals(actor.Role, AppRoles.Police, StringComparison.OrdinalIgnoreCase))
+        var username = string.IsNullOrWhiteSpace(actor.Username) || actor.Username == "demo-user"
+            ? request.Username?.Trim()
+            : actor.Username;
+        var displayName = string.IsNullOrWhiteSpace(actor.DisplayName) || actor.DisplayName == "Nguoi dung demo"
+            ? request.DisplayName?.Trim()
+            : actor.DisplayName;
+
+        if (string.IsNullOrWhiteSpace(username))
         {
-            return (null, "Chi tai khoan canh sat moi duoc chia se vi tri trong ca.");
+            return (null, "Can co dinh danh canh sat de chia se vi tri.");
         }
 
         if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
@@ -50,9 +57,9 @@ public sealed class PolicePresenceService
         }
 
         var location = new PoliceLocationResponse(
-            actor.Username,
-            actor.DisplayName,
-            actor.Role,
+            username,
+            string.IsNullOrWhiteSpace(displayName) ? username : displayName,
+            AppRoles.Police,
             request.Latitude,
             request.Longitude,
             GeoLocationUtils.ResolveDistrict(request.Latitude, request.Longitude),
@@ -60,7 +67,7 @@ public sealed class PolicePresenceService
             status,
             DateTimeOffset.UtcNow);
 
-        _activeLocations.AddOrUpdate(actor.Username, location, (_, _) => location);
+        _activeLocations.AddOrUpdate(username, location, (_, _) => location);
 
         return (location, null);
     }

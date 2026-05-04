@@ -32,10 +32,10 @@ public static class PoliceModule
             .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapGet("/police/locations", PoliceController.GetActivePoliceLocations)
-            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapPost("/police/me/location", PoliceController.UpdateMyLocationAsync)
-            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+            .AllowAnonymous();
 
         api.MapDelete("/police/me/location", PoliceController.EndMyShiftAsync)
             .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
