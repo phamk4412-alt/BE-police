@@ -7,7 +7,7 @@ namespace PoliceBackend.Services;
 
 public sealed class PolicePresenceService
 {
-    private static readonly TimeSpan ActiveLocationTtl = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan ActiveLocationTtl = TimeSpan.FromSeconds(20);
 
     private readonly ConcurrentDictionary<string, PoliceLocationResponse> _activeLocations =
         new(StringComparer.OrdinalIgnoreCase);
