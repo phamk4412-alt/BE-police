@@ -15,6 +15,7 @@ public static class DatabaseBootstrapper
 
         await dbContext.Database.EnsureCreatedAsync();
         await EnsureAccountsTableAsync(dbContext, configuration);
+        await EnsureIncidentSchemaAsync(dbContext, configuration);
         await authService.EnsureDemoAccountsAsync(dbContext);
     }
 
@@ -69,6 +70,44 @@ CREATE TABLE IF NOT EXISTS "Accounts" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_Accounts_NormalizedUsername" ON "Accounts" ("NormalizedUsername");
+""");
+                break;
+        }
+    }
+
+    private static async Task EnsureIncidentSchemaAsync(IncidentDbContext dbContext, IConfiguration configuration)
+    {
+        if (!dbContext.Database.IsRelational())
+        {
+            return;
+        }
+
+        var provider = DatabaseConfiguration.ResolveProvider(configuration);
+        switch (provider)
+        {
+            case DatabaseProviders.SqlServer:
+                await dbContext.Database.ExecuteSqlRawAsync("""
+IF COL_LENGTH(N'[Incidents]', N'ImageUrls') IS NULL
+BEGIN
+    ALTER TABLE [Incidents]
+    ADD [ImageUrls] nvarchar(max) NOT NULL CONSTRAINT [DF_Incidents_ImageUrls] DEFAULT N'';
+END;
+
+IF COL_LENGTH(N'[Incidents]', N'ReporterPhone') IS NULL
+BEGIN
+    ALTER TABLE [Incidents]
+    ADD [ReporterPhone] nvarchar(64) NOT NULL CONSTRAINT [DF_Incidents_ReporterPhone] DEFAULT N'';
+END;
+""");
+                break;
+
+            case DatabaseProviders.Postgres:
+                await dbContext.Database.ExecuteSqlRawAsync("""
+ALTER TABLE "Incidents"
+ADD COLUMN IF NOT EXISTS "ImageUrls" text NOT NULL DEFAULT '';
+
+ALTER TABLE "Incidents"
+ADD COLUMN IF NOT EXISTS "ReporterPhone" character varying(64) NOT NULL DEFAULT '';
 """);
                 break;
         }

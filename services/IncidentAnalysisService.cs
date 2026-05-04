@@ -113,6 +113,9 @@ public sealed class IncidentAnalysisService
     {
         return status?.Trim().ToLowerInvariant() switch
         {
+            "new" => IncidentStatuses.MoiTiepNhan,
+            "processing" => IncidentStatuses.DangXacMinh,
+            "done" => IncidentStatuses.DaXuLy,
             "moi tiep nhan" => IncidentStatuses.MoiTiepNhan,
             "da tiep nhan" => IncidentStatuses.DaTiepNhan,
             "dang xac minh" => IncidentStatuses.DangXacMinh,
@@ -134,6 +137,13 @@ public sealed class IncidentAnalysisService
             return status is IncidentStatuses.DaTiepNhan
                 or IncidentStatuses.DangXacMinh
                 or IncidentStatuses.DaDieuPhoi
+                or IncidentStatuses.DaXuLy;
+        }
+
+        if (string.Equals(role, AppRoles.Support, StringComparison.OrdinalIgnoreCase))
+        {
+            return status is IncidentStatuses.MoiTiepNhan
+                or IncidentStatuses.DangXacMinh
                 or IncidentStatuses.DaXuLy;
         }
 

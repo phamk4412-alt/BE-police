@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using PoliceBackend.Database;
@@ -21,6 +22,11 @@ public static class ServiceCollectionExtensions
         services.Configure<JsonOptions>(options =>
         {
             options.SerializerOptions.PropertyNamingPolicy = null;
+        });
+
+        services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 10 * 1024 * 1024;
         });
 
         services.AddCors(options =>
@@ -67,7 +73,7 @@ public static class ServiceCollectionExtensions
             options.AddPolicy(AuthorizationPolicies.CanSubmitIncident, policy => policy.RequireRole(AppRoles.User));
             options.AddPolicy(AuthorizationPolicies.CanViewIncidents, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police, AppRoles.Support));
             options.AddPolicy(AuthorizationPolicies.CanTrackIncident, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police, AppRoles.Support, AppRoles.User));
-            options.AddPolicy(AuthorizationPolicies.CanUpdateIncidents, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police));
+            options.AddPolicy(AuthorizationPolicies.CanUpdateIncidents, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police, AppRoles.Support));
             options.AddPolicy(AuthorizationPolicies.CanAuditAndExport, policy => policy.RequireRole(AppRoles.Admin));
         });
 

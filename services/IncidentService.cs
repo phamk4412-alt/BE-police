@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using PoliceBackend.Config;
@@ -37,6 +38,45 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .ToArray();
     }
 
+    public async Task<IReadOnlyCollection<SupportIncidentResponse>> GetSupportIncidentsAsync(
+        IncidentDbContext dbContext,
+        string? status,
+        string? level,
+        CancellationToken cancellationToken = default)
+    {
+        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
+        var incidents = await dbContext.Incidents
+            .AsNoTracking()
+            .ApplyFilters(
+                new IncidentQueryParameters(null, status, level, null, null, null, null, "created_desc"),
+                analysisService.NormalizeLevel,
+                analysisService.NormalizeStatus)
+            .ApplySort("created_desc")
+            .ToListAsync(cancellationToken);
+
+        return incidents
+            .Select(item => item.ToSupportResponse(phoneLookup))
+            .ToArray();
+    }
+
+    public async Task<SupportIncidentResponse?> GetSupportIncidentByIdAsync(
+        IncidentDbContext dbContext,
+        Guid incidentId,
+        CancellationToken cancellationToken = default)
+    {
+        var incident = await dbContext.Incidents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == incidentId, cancellationToken);
+
+        if (incident is null)
+        {
+            return null;
+        }
+
+        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
+        return incident.ToSupportResponse(phoneLookup);
+    }
+
     public async Task<IncidentResponse?> GetIncidentByIdAsync(
         IncidentDbContext dbContext,
         Guid incidentId,
@@ -60,20 +100,26 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         assessment = null;
         error = null;
 
-        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Location))
+        if (string.IsNullOrWhiteSpace(request.Title))
         {
-            error = "Can co loai vu viec va toa do.";
+            error = "Can co tieu de vu viec.";
             return false;
         }
 
-        if (!GeoLocationUtils.TryParseLocation(request.Location, out var latitude, out var longitude))
+        if (!GeoLocationUtils.IsWithinCoverage(request.Latitude, request.Longitude))
         {
-            error = "Toa do khong hop le. Dung dinh dang '10.7769, 106.7009'.";
+            error = "Toa do khong hop le hoac nam ngoai khu vuc ho tro.";
             return false;
         }
 
-        assessment = AnalyzeAssessment(request.Title, request.Detail, request.Level);
+        assessment = AnalyzeAssessment(
+            request.Title,
+            request.Detail,
+            string.IsNullOrWhiteSpace(request.Level) ? request.Category : request.Level);
         var now = DateTimeOffset.UtcNow;
+        var category = string.IsNullOrWhiteSpace(request.Category)
+            ? assessment.Category
+            : request.Category.Trim();
 
         incident = new IncidentRecord
         {
@@ -82,24 +128,60 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             Detail = string.IsNullOrWhiteSpace(request.Detail)
                 ? "Nguoi dung vua gui bao cao moi."
                 : request.Detail.Trim(),
-            Category = assessment.Category,
+            Category = category,
             Level = assessment.Level,
             UrgencyScore = assessment.UrgencyScore,
             ClassificationReason = assessment.Reason,
-            Latitude = latitude,
-            Longitude = longitude,
-            District = GeoLocationUtils.ResolveDistrict(latitude, longitude),
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            District = GeoLocationUtils.ResolveDistrict(request.Latitude, request.Longitude),
             TimeLabel = DateTimeOffset.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
             Status = assessment.UrgencyScore >= 85
                 ? IncidentStatuses.DangXacMinh
                 : IncidentStatuses.MoiTiepNhan,
             Source = "user",
             ReporterName = actor.DisplayName,
+            ReporterPhone = actor.Username,
             LastUpdatedBy = actor.DisplayName,
             InternalNote = assessment.Recommendation,
             CreatedAt = now,
             UpdatedAt = now
         };
+
+        return true;
+    }
+
+    public static bool TryValidateImages(
+        IReadOnlyCollection<IFormFile>? images,
+        out string? error)
+    {
+        error = null;
+
+        if (images is null || images.Count == 0)
+        {
+            return true;
+        }
+
+        if (images.Count > 3)
+        {
+            error = "Too many images. Chi duoc tai toi da 3 anh.";
+            return false;
+        }
+
+        foreach (var image in images)
+        {
+            if (image.Length == 0)
+            {
+                error = "Tap tin anh rong.";
+                return false;
+            }
+
+            if (image.Length > 5 * 1024 * 1024)
+            {
+                error = "Moi anh phai nho hon 5MB.";
+                return false;
+            }
+        }
 
         return true;
     }
@@ -120,6 +202,27 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
     public string NormalizeStatus(string? status)
     {
         return analysisService.NormalizeStatus(status);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, string>> BuildReporterPhoneLookupAsync(
+        IncidentDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var accountPhones = await dbContext.Accounts
+            .AsNoTracking()
+            .Select(item => new
+            {
+                item.DisplayName,
+                Phone = item.Username
+            })
+            .ToListAsync(cancellationToken);
+
+        return accountPhones
+            .GroupBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.Phone).FirstOrDefault() ?? string.Empty,
+                StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<UpdateIncidentStatusResult?> UpdateIncidentStatusAsync(

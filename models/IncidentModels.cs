@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PoliceBackend.Models;
 
 public sealed class IncidentRecord
@@ -16,13 +18,24 @@ public sealed class IncidentRecord
     public string Status { get; set; } = "Moi tiep nhan";
     public string Source { get; set; } = "user";
     public string ReporterName { get; set; } = string.Empty;
+    public string ReporterPhone { get; set; } = string.Empty;
     public string LastUpdatedBy { get; set; } = string.Empty;
     public string InternalNote { get; set; } = string.Empty;
+    public string ImageUrls { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
-public sealed record CreateIncidentRequest(string Title, string Location, string? Detail, string? Level);
+public sealed class CreateIncidentRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? Level { get; set; }
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public List<IFormFile> Images { get; set; } = [];
+}
 
 public sealed record UpdateIncidentStatusRequest(string Status, string? InternalNote);
 
@@ -53,10 +66,29 @@ public sealed record IncidentResponse(
     string Status,
     string Source,
     string ReporterName,
+    string ReporterPhone,
     string LastUpdatedBy,
     string InternalNote,
+    IReadOnlyCollection<string> ImageUrls,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed record SupportIncidentResponse(
+    [property: JsonPropertyName("id")] Guid Id,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("detail")] string Detail,
+    [property: JsonPropertyName("category")] string Category,
+    [property: JsonPropertyName("latitude")] double Latitude,
+    [property: JsonPropertyName("longitude")] double Longitude,
+    [property: JsonPropertyName("level")] string Level,
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("reporterName")] string ReporterName,
+    [property: JsonPropertyName("phone")] string Phone,
+    [property: JsonPropertyName("imageUrls")] IReadOnlyCollection<string> ImageUrls,
+    [property: JsonPropertyName("createdAt")] DateTimeOffset CreatedAt);
+
+public sealed record SupportIncidentStatusUpdateRequest(
+    [property: JsonPropertyName("status")] string Status);
 
 public sealed record IncidentAnalysisResponse(
     string Category,
