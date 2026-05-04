@@ -104,4 +104,57 @@ public static class PoliceController
     {
         return Results.Ok(await incidentService.GetPatrolVehiclesAsync(dbContext, cancellationToken));
     }
+
+    public static IResult GetActivePoliceLocations(
+        PolicePresenceService policePresenceService)
+    {
+        return Results.Ok(policePresenceService.GetActiveLocations());
+    }
+
+    public static async Task<IResult> UpdateMyLocationAsync(
+        PoliceLocationRequest request,
+        HttpContext context,
+        AuthService authService,
+        PolicePresenceService policePresenceService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var actor = authService.GetActorSnapshot(context.User);
+        var (location, error) = policePresenceService.UpdateLocation(actor, request);
+
+        if (location is null)
+        {
+            return Results.BadRequest(new { message = error });
+        }
+
+        await hubContext.Clients.All.SendAsync("PoliceLocationUpdated", location, cancellationToken);
+        await hubContext.Clients.All.SendAsync(
+            "PoliceLocationsSnapshot",
+            policePresenceService.GetActiveLocations(),
+            cancellationToken);
+
+        return Results.Ok(location);
+    }
+
+    public static async Task<IResult> EndMyShiftAsync(
+        HttpContext context,
+        AuthService authService,
+        PolicePresenceService policePresenceService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var actor = authService.GetActorSnapshot(context.User);
+        var removed = policePresenceService.RemoveLocation(actor);
+
+        if (removed is not null)
+        {
+            await hubContext.Clients.All.SendAsync("PoliceLocationRemoved", removed, cancellationToken);
+            await hubContext.Clients.All.SendAsync(
+                "PoliceLocationsSnapshot",
+                policePresenceService.GetActiveLocations(),
+                cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
 }

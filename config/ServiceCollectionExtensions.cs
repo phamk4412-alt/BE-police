@@ -112,6 +112,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IncidentAnalysisService>();
+        services.AddSingleton<PolicePresenceService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();

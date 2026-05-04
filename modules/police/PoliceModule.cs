@@ -28,6 +28,15 @@ public static class PoliceModule
         api.MapGet("/police/patrol-vehicles", PoliceController.GetPatrolVehiclesAsync)
             .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
+        api.MapGet("/police/locations", PoliceController.GetActivePoliceLocations)
+            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+
+        api.MapPost("/police/me/location", PoliceController.UpdateMyLocationAsync)
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+
+        api.MapDelete("/police/me/location", PoliceController.EndMyShiftAsync)
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+
         return app;
     }
 }
