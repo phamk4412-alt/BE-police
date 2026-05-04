@@ -203,3 +203,5 @@ public sealed record PoliceLocationResponse(
     string? ShiftId,
     string Status,
     DateTimeOffset UpdatedAt);
+
+public sealed record EndPoliceShiftRequest(string? Username);

@@ -7,11 +7,15 @@ namespace PoliceBackend.Services;
 
 public sealed class PolicePresenceService
 {
+    private static readonly TimeSpan ActiveLocationTtl = TimeSpan.FromSeconds(45);
+
     private readonly ConcurrentDictionary<string, PoliceLocationResponse> _activeLocations =
         new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyCollection<PoliceLocationResponse> GetActiveLocations()
     {
+        PruneExpiredLocations();
+
         return _activeLocations.Values
             .OrderBy(item => item.DisplayName)
             .ToArray();
@@ -74,8 +78,30 @@ public sealed class PolicePresenceService
 
     public PoliceLocationResponse? RemoveLocation(ActorSnapshot actor)
     {
-        return _activeLocations.TryRemove(actor.Username, out var removed)
+        return RemoveLocation(actor.Username);
+    }
+
+    public PoliceLocationResponse? RemoveLocation(string? username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        return _activeLocations.TryRemove(username.Trim(), out var removed)
             ? removed
             : null;
+    }
+
+    private void PruneExpiredLocations()
+    {
+        var cutoff = DateTimeOffset.UtcNow.Subtract(ActiveLocationTtl);
+        foreach (var location in _activeLocations)
+        {
+            if (location.Value.UpdatedAt < cutoff)
+            {
+                _activeLocations.TryRemove(location.Key, out _);
+            }
+        }
     }
 }

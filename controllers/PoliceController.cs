@@ -137,6 +137,8 @@ public static class PoliceController
     }
 
     public static async Task<IResult> EndMyShiftAsync(
+        EndPoliceShiftRequest? request,
+        string? username,
         HttpContext context,
         AuthService authService,
         PolicePresenceService policePresenceService,
@@ -144,7 +146,8 @@ public static class PoliceController
         CancellationToken cancellationToken)
     {
         var actor = authService.GetActorSnapshot(context.User);
-        var removed = policePresenceService.RemoveLocation(actor);
+        var removed = policePresenceService.RemoveLocation(request?.Username ?? username)
+            ?? policePresenceService.RemoveLocation(actor);
 
         if (removed is not null)
         {
