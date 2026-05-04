@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using PoliceBackend.Database;
@@ -21,6 +22,11 @@ public static class ServiceCollectionExtensions
         services.Configure<JsonOptions>(options =>
         {
             options.SerializerOptions.PropertyNamingPolicy = null;
+        });
+
+        services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 10 * 1024 * 1024;
         });
 
         services.AddCors(options =>

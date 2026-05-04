@@ -19,6 +19,8 @@ public static class ModelMappingExtensions
         incident.ReporterName,
         incident.LastUpdatedBy,
         incident.InternalNote,
+        incident.ImageUrls
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         incident.CreatedAt,
         incident.UpdatedAt);
 

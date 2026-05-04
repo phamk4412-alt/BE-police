@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Mvc;
 using PoliceBackend.Config;
 using PoliceBackend.Database;
 using PoliceBackend.Models;
@@ -36,8 +37,9 @@ public static class UserController
     }
 
     public static async Task<IResult> CreateIncidentAsync(
-        CreateIncidentRequest request,
+        [FromForm] CreateIncidentRequest request,
         HttpContext context,
+        IWebHostEnvironment environment,
         IncidentDbContext dbContext,
         IncidentService incidentService,
         AuditService auditService,
@@ -46,10 +48,18 @@ public static class UserController
         CancellationToken cancellationToken)
     {
         var actor = authService.GetActorSnapshot(context.User);
+        if (!IncidentService.TryValidateImages(request.Images, out var imageError))
+        {
+            return Results.BadRequest(new { message = imageError });
+        }
+
         if (!incidentService.TryBuildIncident(request, actor, out var incident, out var assessment, out var error))
         {
             return Results.BadRequest(new { message = error });
         }
+
+        var imageUrls = await SaveImagesAsync(request.Images, environment, cancellationToken);
+        incident!.ImageUrls = string.Join(",", imageUrls);
 
         dbContext.Incidents.Add(incident!);
         await auditService.WriteAsync(
@@ -75,6 +85,33 @@ public static class UserController
             incident.ToResponse());
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IReadOnlyCollection<string>> SaveImagesAsync(
+        IReadOnlyCollection<IFormFile>? images,
+        IWebHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+        if (images is null || images.Count == 0)
+        {
+            return [];
+        }
+
+        var uploadRoot = Path.Combine(environment.ContentRootPath, "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadRoot);
+
+        var imageUrls = new List<string>(images.Count);
+        foreach (var image in images)
+        {
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(image.FileName)}";
+            var filePath = Path.Combine(uploadRoot, fileName);
+
+            await using var stream = new FileStream(filePath, FileMode.Create);
+            await image.CopyToAsync(stream, cancellationToken);
+            imageUrls.Add($"/uploads/{fileName}");
+        }
+
+        return imageUrls;
     }
 
     public static async Task<IResult> GetIncidentByIdAsync(

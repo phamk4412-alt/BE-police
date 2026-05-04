@@ -90,6 +90,9 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
             .HasMaxLength(2000)
             .IsRequired();
 
+        incident.Property(item => item.ImageUrls)
+            .IsRequired();
+
         incident.HasIndex(item => item.CreatedAt);
         incident.HasIndex(item => item.Status);
         incident.HasIndex(item => item.Level);

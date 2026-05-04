@@ -20,6 +20,7 @@ await app.Services.EnsureDatabaseReadyAsync();
 app.MapOpenApi();
 app.MapScalarApiReference();
 
+app.UseStaticFiles();
 app.UseMiddleware<CorsPreflightMiddleware>();
 app.UseCors(CorsPolicyNames.OpenRealtime);
 app.UseAuthentication();

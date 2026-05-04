@@ -1,5 +1,6 @@
 using PoliceBackend.Config;
 using PoliceBackend.Controllers;
+using PoliceBackend.Models;
 using PoliceBackend.Utils;
 
 namespace PoliceBackend.Modules.User;
@@ -14,6 +15,8 @@ public static class UserModule
             .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
 
         api.MapPost("/incidents", UserController.CreateIncidentAsync)
+            .Accepts<CreateIncidentRequest>("multipart/form-data")
+            .DisableAntiforgery()
             .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
 
         api.MapGet("/incidents/{id:guid}", UserController.GetIncidentByIdAsync)
