@@ -137,7 +137,6 @@ public static class PoliceController
     }
 
     public static async Task<IResult> EndMyShiftAsync(
-        EndPoliceShiftRequest? request,
         string? username,
         HttpContext context,
         AuthService authService,
@@ -146,8 +145,28 @@ public static class PoliceController
         CancellationToken cancellationToken)
     {
         var actor = authService.GetActorSnapshot(context.User);
-        var removed = policePresenceService.RemoveLocation(request?.Username ?? username)
+        var removed = policePresenceService.RemoveLocation(username)
             ?? policePresenceService.RemoveLocation(actor);
+
+        if (removed is not null)
+        {
+            await hubContext.Clients.All.SendAsync("PoliceLocationRemoved", removed, cancellationToken);
+            await hubContext.Clients.All.SendAsync(
+                "PoliceLocationsSnapshot",
+                policePresenceService.GetActiveLocations(),
+                cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
+
+    public static async Task<IResult> EndMyShiftByRequestAsync(
+        EndPoliceShiftRequest request,
+        PolicePresenceService policePresenceService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var removed = policePresenceService.RemoveLocation(request.Username);
 
         if (removed is not null)
         {

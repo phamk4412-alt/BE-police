@@ -38,7 +38,10 @@ public static class PoliceModule
             .AllowAnonymous();
 
         api.MapDelete("/police/me/location", PoliceController.EndMyShiftAsync)
-            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+            .AllowAnonymous();
+
+        api.MapPost("/police/me/location/end", PoliceController.EndMyShiftByRequestAsync)
+            .AllowAnonymous();
 
         return app;
     }
