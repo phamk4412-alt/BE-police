@@ -92,6 +92,12 @@ BEGIN
     ALTER TABLE [Incidents]
     ADD [ImageUrls] nvarchar(max) NOT NULL CONSTRAINT [DF_Incidents_ImageUrls] DEFAULT N'';
 END;
+
+IF COL_LENGTH(N'[Incidents]', N'ReporterPhone') IS NULL
+BEGIN
+    ALTER TABLE [Incidents]
+    ADD [ReporterPhone] nvarchar(64) NOT NULL CONSTRAINT [DF_Incidents_ReporterPhone] DEFAULT N'';
+END;
 """);
                 break;
 
@@ -99,6 +105,9 @@ END;
                 await dbContext.Database.ExecuteSqlRawAsync("""
 ALTER TABLE "Incidents"
 ADD COLUMN IF NOT EXISTS "ImageUrls" text NOT NULL DEFAULT '';
+
+ALTER TABLE "Incidents"
+ADD COLUMN IF NOT EXISTS "ReporterPhone" character varying(64) NOT NULL DEFAULT '';
 """);
                 break;
         }

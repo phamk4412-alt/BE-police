@@ -10,10 +10,13 @@ public static class PoliceModule
     {
         var api = app.MapGroup("/api");
 
-        api.MapGet("/incidents", PoliceController.GetIncidentBoardAsync)
+        api.MapGet("/incidents", SupportController.GetIncidentsAsync)
             .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanViewIncidents);
 
         api.MapPatch("/incidents/{id:guid}/status", PoliceController.UpdateIncidentStatusAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+
+        api.MapPut("/incidents/{id:guid}/status", SupportController.UpdateIncidentStatusAsync)
             .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapGet("/police/cases", PoliceController.GetIncidentBoardAsync)

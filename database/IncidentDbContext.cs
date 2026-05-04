@@ -82,6 +82,10 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
             .HasMaxLength(120)
             .IsRequired();
 
+        incident.Property(item => item.ReporterPhone)
+            .HasMaxLength(64)
+            .IsRequired();
+
         incident.Property(item => item.LastUpdatedBy)
             .HasMaxLength(120)
             .IsRequired();

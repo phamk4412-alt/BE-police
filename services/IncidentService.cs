@@ -38,6 +38,45 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .ToArray();
     }
 
+    public async Task<IReadOnlyCollection<SupportIncidentResponse>> GetSupportIncidentsAsync(
+        IncidentDbContext dbContext,
+        string? status,
+        string? level,
+        CancellationToken cancellationToken = default)
+    {
+        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
+        var incidents = await dbContext.Incidents
+            .AsNoTracking()
+            .ApplyFilters(
+                new IncidentQueryParameters(null, status, level, null, null, null, null, "created_desc"),
+                analysisService.NormalizeLevel,
+                analysisService.NormalizeStatus)
+            .ApplySort("created_desc")
+            .ToListAsync(cancellationToken);
+
+        return incidents
+            .Select(item => item.ToSupportResponse(phoneLookup))
+            .ToArray();
+    }
+
+    public async Task<SupportIncidentResponse?> GetSupportIncidentByIdAsync(
+        IncidentDbContext dbContext,
+        Guid incidentId,
+        CancellationToken cancellationToken = default)
+    {
+        var incident = await dbContext.Incidents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == incidentId, cancellationToken);
+
+        if (incident is null)
+        {
+            return null;
+        }
+
+        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
+        return incident.ToSupportResponse(phoneLookup);
+    }
+
     public async Task<IncidentResponse?> GetIncidentByIdAsync(
         IncidentDbContext dbContext,
         Guid incidentId,
@@ -102,6 +141,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
                 : IncidentStatuses.MoiTiepNhan,
             Source = "user",
             ReporterName = actor.DisplayName,
+            ReporterPhone = actor.Username,
             LastUpdatedBy = actor.DisplayName,
             InternalNote = assessment.Recommendation,
             CreatedAt = now,
@@ -162,6 +202,27 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
     public string NormalizeStatus(string? status)
     {
         return analysisService.NormalizeStatus(status);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, string>> BuildReporterPhoneLookupAsync(
+        IncidentDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var accountPhones = await dbContext.Accounts
+            .AsNoTracking()
+            .Select(item => new
+            {
+                item.DisplayName,
+                Phone = item.Username
+            })
+            .ToListAsync(cancellationToken);
+
+        return accountPhones
+            .GroupBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.Phone).FirstOrDefault() ?? string.Empty,
+                StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<UpdateIncidentStatusResult?> UpdateIncidentStatusAsync(

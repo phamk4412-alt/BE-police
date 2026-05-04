@@ -1,11 +1,95 @@
 using PoliceBackend.Config;
 using PoliceBackend.Database;
+using PoliceBackend.Models;
 using PoliceBackend.Services;
+using PoliceBackend.Services.Realtime;
+using Microsoft.AspNetCore.SignalR;
 
 namespace PoliceBackend.Controllers;
 
 public static class SupportController
 {
+    public static async Task<IResult> GetIncidentsAsync(
+        IncidentDbContext dbContext,
+        IncidentService incidentService,
+        string? status,
+        string? level,
+        CancellationToken cancellationToken)
+    {
+        var incidents = await incidentService.GetSupportIncidentsAsync(
+            dbContext,
+            status,
+            level,
+            cancellationToken);
+
+        return Results.Ok(incidents);
+    }
+
+    public static async Task<IResult> UpdateIncidentStatusAsync(
+        Guid id,
+        SupportIncidentStatusUpdateRequest request,
+        HttpContext context,
+        IncidentDbContext dbContext,
+        IncidentService incidentService,
+        AuditService auditService,
+        AuthService authService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var actor = authService.GetActorSnapshot(context.User);
+        var normalizedStatus = incidentService.NormalizeStatus(request.Status);
+
+        if (!incidentService.CanUpdateIncidentStatus(actor.Role, normalizedStatus))
+        {
+            await auditService.WriteAsync(
+                dbContext,
+                context,
+                action: AuditActions.UpdateIncidentDenied,
+                entityType: AuditEntities.Incident,
+                entityId: id.ToString(),
+                summary: "Bi tu choi cap nhat trang thai.",
+                detail: $"{actor.DisplayName} khong du quyen cap nhat trang thai sang {normalizedStatus}.",
+                actor: actor,
+                cancellationToken: cancellationToken);
+
+            return Results.Json(
+                new { message = "Vai tro hien tai khong du quyen cap nhat trang thai nay." },
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var result = await incidentService.UpdateIncidentStatusAsync(
+            dbContext,
+            hubContext,
+            id,
+            new UpdateIncidentStatusRequest(request.Status, null),
+            actor,
+            cancellationToken);
+
+        if (result is null)
+        {
+            return Results.NotFound(new { message = "Khong tim thay vu viec." });
+        }
+
+        await auditService.WriteAsync(
+            dbContext,
+            context,
+            action: AuditActions.UpdateIncidentStatus,
+            entityType: AuditEntities.Incident,
+            entityId: result.Incident.Id.ToString(),
+            summary: "Cap nhat trang thai vu viec.",
+            detail: $"{actor.DisplayName} cap nhat vu viec {result.Incident.Title} sang {result.Incident.Status}.",
+            actor: actor,
+            cancellationToken: cancellationToken);
+
+        var updatedIncident = await incidentService.GetSupportIncidentByIdAsync(
+            dbContext,
+            id,
+            cancellationToken);
+        return updatedIncident is null
+            ? Results.NotFound(new { message = "Khong tim thay vu viec." })
+            : Results.Ok(updatedIncident);
+    }
+
     public static async Task<IResult> GetDispatchBoardAsync(
         IncidentDbContext dbContext,
         IncidentService incidentService,
