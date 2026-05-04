@@ -26,9 +26,9 @@ public sealed class PolicePresenceService
             return (null, "Chi tai khoan canh sat moi duoc chia se vi tri trong ca.");
         }
 
-        if (!GeoLocationUtils.IsWithinCoverage(request.Latitude, request.Longitude))
+        if (request.Latitude is < -90 or > 90 || request.Longitude is < -180 or > 180)
         {
-            return (null, "Toa do nam ngoai khu vuc ho tro.");
+            return (null, "Toa do khong hop le.");
         }
 
         var status = string.IsNullOrWhiteSpace(request.Status)
