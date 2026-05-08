@@ -29,8 +29,9 @@ public sealed class IncidentRecord
 public sealed class CreateIncidentRequest
 {
     public string Title { get; set; } = string.Empty;
-    public string Detail { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
+    public string? Detail { get; set; }
+    public string? Category { get; set; }
+    public string? CustomCategory { get; set; }
     public string? Level { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }

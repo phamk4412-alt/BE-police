@@ -117,17 +117,13 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             request.Detail,
             string.IsNullOrWhiteSpace(request.Level) ? request.Category : request.Level);
         var now = DateTimeOffset.UtcNow;
-        var category = string.IsNullOrWhiteSpace(request.Category)
-            ? assessment.Category
-            : request.Category.Trim();
+        var category = ResolveCategory(request, assessment);
 
         incident = new IncidentRecord
         {
             Id = Guid.NewGuid(),
             Title = request.Title.Trim(),
-            Detail = string.IsNullOrWhiteSpace(request.Detail)
-                ? "Nguoi dung vua gui bao cao moi."
-                : request.Detail.Trim(),
+            Detail = request.Detail?.Trim() ?? string.Empty,
             Category = category,
             Level = assessment.Level,
             UrgencyScore = assessment.UrgencyScore,
@@ -149,6 +145,32 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         };
 
         return true;
+    }
+
+    private static string ResolveCategory(CreateIncidentRequest request, IncidentAssessment assessment)
+    {
+        if (string.IsNullOrWhiteSpace(request.Category))
+        {
+            return assessment.Category;
+        }
+
+        var category = request.Category.Trim();
+        if (!IsOtherCategory(category))
+        {
+            return category;
+        }
+
+        return string.IsNullOrWhiteSpace(request.CustomCategory)
+            ? assessment.Category
+            : request.CustomCategory.Trim();
+    }
+
+    private static bool IsOtherCategory(string category)
+    {
+        return string.Equals(
+            TextNormalizationUtils.RemoveDiacritics(category).Trim(),
+            "Khac",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool TryValidateImages(
