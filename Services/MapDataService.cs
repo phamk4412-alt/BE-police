@@ -2,7 +2,7 @@ namespace PoliceBackend.Services;
 
 public sealed class MapDataService(IWebHostEnvironment environment)
 {
-    private readonly string _mapsDirectory = Path.Combine(environment.ContentRootPath, "data", "maps");
+    private readonly string _mapsDirectory = Path.Combine(environment.ContentRootPath, "Data", "Maps");
 
     public string GetBoundaryFilePath()
     {
