@@ -92,10 +92,13 @@ public sealed class ClerkAdminService
         string? body,
         CancellationToken cancellationToken)
     {
-        var secretKey = configuration["CLERK_SECRET_KEY"] ?? configuration["Clerk:SecretKey"];
+        var secretKey =
+            configuration["CLERK_SECRET_KEY"] ??
+            configuration["CLERK_API_KEY"] ??
+            configuration["Clerk:SecretKey"];
         if (string.IsNullOrWhiteSpace(secretKey))
         {
-            throw new InvalidOperationException("Chua cau hinh CLERK_SECRET_KEY cho backend.");
+            throw new InvalidOperationException("Chua cau hinh CLERK_SECRET_KEY tren backend Render.");
         }
 
         using var request = new HttpRequestMessage(method, endpoint);

@@ -94,7 +94,7 @@ public static class AdminController
         }
         catch (InvalidOperationException error)
         {
-            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 
@@ -114,7 +114,7 @@ public static class AdminController
         }
         catch (InvalidOperationException error)
         {
-            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 
@@ -134,7 +134,7 @@ public static class AdminController
         }
         catch (InvalidOperationException error)
         {
-            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 
@@ -150,7 +150,7 @@ public static class AdminController
         }
         catch (InvalidOperationException error)
         {
-            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
         }
     }
 
