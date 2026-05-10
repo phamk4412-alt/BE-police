@@ -1,6 +1,7 @@
 using System.Text;
 using PoliceBackend.Config;
 using PoliceBackend.Database;
+using PoliceBackend.Models;
 using PoliceBackend.Services;
 using PoliceBackend.Utils;
 
@@ -81,6 +82,76 @@ public static class AdminController
         CancellationToken cancellationToken)
     {
         return Results.Ok(await authService.GetAccountsAsync(dbContext, cancellationToken));
+    }
+
+    public static async Task<IResult> GetClerkAccountsAsync(
+        ClerkAdminService clerkAdminService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await clerkAdminService.GetUsersAsync(cancellationToken));
+        }
+        catch (InvalidOperationException error)
+        {
+            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    public static async Task<IResult> UpdateClerkAccountRoleAsync(
+        ClerkAdminService clerkAdminService,
+        string userId,
+        UpdateClerkUserRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await clerkAdminService.UpdateRoleAsync(userId, request.Role, cancellationToken));
+        }
+        catch (ArgumentException error)
+        {
+            return Results.BadRequest(new { message = error.Message });
+        }
+        catch (InvalidOperationException error)
+        {
+            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    public static async Task<IResult> UpdateClerkAccountStatusAsync(
+        ClerkAdminService clerkAdminService,
+        string userId,
+        UpdateClerkUserStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await clerkAdminService.UpdateStatusAsync(userId, request.Status, cancellationToken));
+        }
+        catch (ArgumentException error)
+        {
+            return Results.BadRequest(new { message = error.Message });
+        }
+        catch (InvalidOperationException error)
+        {
+            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    public static async Task<IResult> DeleteClerkAccountAsync(
+        ClerkAdminService clerkAdminService,
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await clerkAdminService.DeleteUserAsync(userId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (InvalidOperationException error)
+        {
+            return Results.Problem(error.Message, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
     }
 
     public static IResult GetSystemHealth(IConfiguration configuration)

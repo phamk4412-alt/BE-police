@@ -119,6 +119,10 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IncidentAnalysisService>();
         services.AddSingleton<PolicePresenceService>();
+        services.AddHttpClient<ClerkAdminService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.clerk.com/v1/");
+        });
         services.AddScoped<AuthService>();
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();
