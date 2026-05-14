@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PoliceBackend.Config;
+using PoliceBackend.Models;
 using PoliceBackend.Services;
 
 namespace PoliceBackend.Database;
@@ -13,9 +14,18 @@ public static class DatabaseBootstrapper
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
 
-        await dbContext.Database.EnsureCreatedAsync();
+        if (dbContext.Database.IsRelational())
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+        else
+        {
+            await dbContext.Database.EnsureCreatedAsync();
+        }
+
         await EnsureAccountsTableAsync(dbContext, configuration);
         await EnsureIncidentSchemaAsync(dbContext, configuration);
+        await EnsureNationalEventsSeedAsync(dbContext);
         await authService.EnsureDemoAccountsAsync(dbContext);
     }
 
@@ -111,5 +121,45 @@ ADD COLUMN IF NOT EXISTS "ReporterPhone" character varying(64) NOT NULL DEFAULT 
 """);
                 break;
         }
+    }
+
+    private static async Task EnsureNationalEventsSeedAsync(IncidentDbContext dbContext)
+    {
+        var now = DateTime.UtcNow;
+        var seedEvents = new[]
+        {
+            new { Name = "Tết Nguyên Đán", EventDate = new DateOnly(2026, 2, 17), Description = "Ngày Tết cổ truyền Việt Nam.", SortOrder = 1 },
+            new { Name = "Giỗ Tổ Hùng Vương", EventDate = new DateOnly(2026, 4, 26), Description = "Ngày tưởng nhớ các Vua Hùng.", SortOrder = 2 },
+            new { Name = "30/4", EventDate = new DateOnly(2026, 4, 30), Description = "Ngày Giải phóng miền Nam, thống nhất đất nước.", SortOrder = 3 },
+            new { Name = "1/5", EventDate = new DateOnly(2026, 5, 1), Description = "Ngày Quốc tế Lao động.", SortOrder = 4 },
+            new { Name = "2/9", EventDate = new DateOnly(2026, 9, 2), Description = "Ngày Quốc khánh nước Cộng hòa Xã hội Chủ nghĩa Việt Nam.", SortOrder = 5 },
+            new { Name = "Noel", EventDate = new DateOnly(2026, 12, 25), Description = "Ngày Lễ Giáng sinh.", SortOrder = 6 },
+            new { Name = "Tết Dương Lịch", EventDate = new DateOnly(2026, 1, 1), Description = "Ngày đầu năm Dương lịch.", SortOrder = 7 }
+        };
+
+        foreach (var seedEvent in seedEvents)
+        {
+            var exists = await dbContext.NationalEvents.AnyAsync(
+                item => item.Name == seedEvent.Name);
+
+            if (exists)
+            {
+                continue;
+            }
+
+            dbContext.NationalEvents.Add(new NationalEventRecord
+            {
+                Id = Guid.NewGuid(),
+                Name = seedEvent.Name,
+                EventDate = seedEvent.EventDate,
+                Description = seedEvent.Description,
+                IsActive = true,
+                SortOrder = seedEvent.SortOrder,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 }

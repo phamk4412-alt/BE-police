@@ -2,6 +2,7 @@ using PoliceBackend.Config;
 using PoliceBackend.Database;
 using PoliceBackend.Middleware;
 using PoliceBackend.Modules.Admin;
+using PoliceBackend.Modules.News;
 using PoliceBackend.Modules.Police;
 using PoliceBackend.Modules.Support;
 using PoliceBackend.Modules.User;
@@ -27,6 +28,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapSharedRoutes();
+app.MapNewsModule();
 app.MapUserModule(demoOpenAccess);
 app.MapPoliceModule(demoOpenAccess);
 app.MapSupportModule();

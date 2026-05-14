@@ -75,6 +75,7 @@ public static class ServiceCollectionExtensions
             options.AddPolicy(AuthorizationPolicies.CanTrackIncident, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police, AppRoles.Support, AppRoles.User));
             options.AddPolicy(AuthorizationPolicies.CanUpdateIncidents, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Police, AppRoles.Support));
             options.AddPolicy(AuthorizationPolicies.CanAuditAndExport, policy => policy.RequireRole(AppRoles.Admin));
+            options.AddPolicy(AuthorizationPolicies.CanManageNews, policy => policy.RequireRole(AppRoles.Admin, AppRoles.Support));
         });
 
         services.AddSignalR().AddJsonProtocol(options =>
@@ -127,6 +128,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();
         services.AddScoped<MapDataService>();
+        services.AddScoped<NewsService>();
 
         return services;
     }

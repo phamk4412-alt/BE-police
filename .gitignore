@@ -1,8 +1,12 @@
 bin/
 obj/
 .dotnet/
+.dotnet-home/
 .dotnet9/
+.dotnet-tools/
 .nuget/
+.appdata/
+.localappdata/
 .idea/
 .vs/
 *.user

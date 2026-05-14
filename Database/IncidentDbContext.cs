@@ -8,6 +8,8 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
     public DbSet<IncidentRecord> Incidents => Set<IncidentRecord>();
     public DbSet<AuditLogRecord> AuditLogs => Set<AuditLogRecord>();
     public DbSet<AccountRecord> Accounts => Set<AccountRecord>();
+    public DbSet<NewsRecord> News => Set<NewsRecord>();
+    public DbSet<NationalEventRecord> NationalEvents => Set<NationalEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,5 +147,62 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         auditLog.HasIndex(item => item.CreatedAt);
         auditLog.HasIndex(item => item.Action);
         auditLog.HasIndex(item => item.ActorRole);
+
+        var news = modelBuilder.Entity<NewsRecord>();
+        news.ToTable("News");
+        news.HasKey(item => item.Id);
+
+        news.Property(item => item.Title)
+            .HasMaxLength(300)
+            .IsRequired();
+
+        news.Property(item => item.Summary)
+            .HasMaxLength(1000)
+            .IsRequired();
+
+        news.Property(item => item.Content)
+            .IsRequired();
+
+        news.Property(item => item.ThumbnailUrl)
+            .HasMaxLength(1000)
+            .IsRequired();
+
+        news.Property(item => item.Category)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        news.Property(item => item.Status)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        news.Property(item => item.CreatedBy)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        news.Property(item => item.UpdatedBy)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        news.HasIndex(item => item.PublishedAt);
+        news.HasIndex(item => item.Status);
+        news.HasIndex(item => item.IsFeatured);
+        news.HasIndex(item => item.FeaturedOrder);
+        news.HasIndex(item => item.Category);
+
+        var nationalEvent = modelBuilder.Entity<NationalEventRecord>();
+        nationalEvent.ToTable("NationalEvents");
+        nationalEvent.HasKey(item => item.Id);
+
+        nationalEvent.Property(item => item.Name)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        nationalEvent.Property(item => item.Description)
+            .HasMaxLength(1000)
+            .IsRequired();
+
+        nationalEvent.HasIndex(item => item.EventDate);
+        nationalEvent.HasIndex(item => item.IsActive);
+        nationalEvent.HasIndex(item => item.SortOrder);
     }
 }

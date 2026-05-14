@@ -21,6 +21,24 @@ public static class SupportModule
         api.MapGet("/support/center-overview", SupportController.GetCenterOverviewAsync)
             .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
 
+        api.MapGet("/support/news", SupportNewsController.GetNewsAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
+        api.MapPost("/support/news", SupportNewsController.CreateNewsAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
+        api.MapPut("/support/news/{id:guid}", SupportNewsController.UpdateNewsAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
+        api.MapDelete("/support/news/{id:guid}", SupportNewsController.DeleteNewsAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
+        api.MapPatch("/support/news/{id:guid}/status", SupportNewsController.UpdateNewsStatusAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
+        api.MapPatch("/support/news/{id:guid}/featured", SupportNewsController.UpdateNewsFeaturedAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+
         return app;
     }
 }

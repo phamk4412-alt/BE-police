@@ -19,6 +19,7 @@ public static class AuthorizationPolicies
     public const string CanTrackIncident = nameof(CanTrackIncident);
     public const string CanUpdateIncidents = nameof(CanUpdateIncidents);
     public const string CanAuditAndExport = nameof(CanAuditAndExport);
+    public const string CanManageNews = nameof(CanManageNews);
 }
 
 public static class DatabaseProviders
@@ -40,6 +41,13 @@ public static class IncidentStatuses
     public const string DangXacMinh = "Dang xac minh";
     public const string DaDieuPhoi = "Da dieu phoi";
     public const string DaXuLy = "Da xu ly";
+}
+
+public static class NewsStatuses
+{
+    public const string Draft = "draft";
+    public const string Published = "published";
+    public const string Hidden = "hidden";
 }
 
 public static class AuditActions

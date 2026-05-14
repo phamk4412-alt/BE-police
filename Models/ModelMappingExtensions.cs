@@ -2,6 +2,22 @@ namespace PoliceBackend.Models;
 
 public static class ModelMappingExtensions
 {
+    public static NewsResponse ToResponse(this NewsRecord news) => new(
+        news.Id,
+        news.Title,
+        news.Summary,
+        news.Content,
+        news.ThumbnailUrl,
+        news.Category,
+        news.IsFeatured,
+        news.FeaturedOrder,
+        news.Status,
+        news.PublishedAt,
+        news.CreatedAt,
+        news.UpdatedAt,
+        news.CreatedBy,
+        news.UpdatedBy);
+
     public static IncidentResponse ToResponse(this IncidentRecord incident) => new(
         incident.Id,
         incident.Title,
