@@ -143,6 +143,7 @@ public sealed class IncidentAnalysisService
         if (string.Equals(role, AppRoles.Support, StringComparison.OrdinalIgnoreCase))
         {
             return status is IncidentStatuses.MoiTiepNhan
+                or IncidentStatuses.DaTiepNhan
                 or IncidentStatuses.DangXacMinh
                 or IncidentStatuses.DaXuLy;
         }
