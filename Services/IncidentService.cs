@@ -295,12 +295,46 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             return null;
         }
 
-        var payload = incident.ToResponse();
-        dbContext.Incidents.Remove(incident);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await hubContext.Clients.All.SendAsync("IncidentDeleted", new { id = incidentId }, cancellationToken);
+        // Start a transaction to ensure atomicity
+        var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var payload = incident.ToResponse();
+            
+            // Delete related audit logs for this incident
+            var relatedAuditLogs = await dbContext.AuditLogs
+                .Where(log => log.EntityId == incidentId.ToString())
+                .ToListAsync(cancellationToken);
+            
+            if (relatedAuditLogs.Count > 0)
+            {
+                dbContext.AuditLogs.RemoveRange(relatedAuditLogs);
+            }
+            
+            // Delete the incident
+            dbContext.Incidents.Remove(incident);
+            
+            // Save all changes to database
+            await dbContext.SaveChangesAsync(cancellationToken);
+            
+            // Commit the transaction
+            await transaction.CommitAsync(cancellationToken);
+            
+            // Send SignalR notification after successful database operation
+            await hubContext.Clients.All.SendAsync("IncidentDeleted", new { id = incidentId }, cancellationToken);
 
-        return payload;
+            return payload;
+        }
+        catch
+        {
+            // Rollback the transaction on error
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+        }
     }
 
     public async Task<IReadOnlyCollection<IncidentResponse>> GetReportHistoryAsync(
