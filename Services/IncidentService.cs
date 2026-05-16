@@ -295,45 +295,25 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             return null;
         }
 
-        // Start a transaction to ensure atomicity
-        var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             var payload = incident.ToResponse();
             
-            // Delete related audit logs for this incident
-            var relatedAuditLogs = await dbContext.AuditLogs
-                .Where(log => log.EntityId == incidentId.ToString())
-                .ToListAsync(cancellationToken);
-            
-            if (relatedAuditLogs.Count > 0)
-            {
-                dbContext.AuditLogs.RemoveRange(relatedAuditLogs);
-            }
-            
-            // Delete the incident
+            // Delete the incident from database
             dbContext.Incidents.Remove(incident);
-            
-            // Save all changes to database
             await dbContext.SaveChangesAsync(cancellationToken);
             
-            // Commit the transaction
-            await transaction.CommitAsync(cancellationToken);
+            // Detach the entity to avoid tracking issues
+            dbContext.Entry(incident).State = EntityState.Detached;
             
-            // Send SignalR notification after successful database operation
+            // Send SignalR notification after successful database deletion
             await hubContext.Clients.All.SendAsync("IncidentDeleted", new { id = incidentId }, cancellationToken);
 
             return payload;
         }
-        catch
+        catch (Exception ex)
         {
-            // Rollback the transaction on error
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
-        finally
-        {
-            await transaction.DisposeAsync();
+            throw new InvalidOperationException($"Loi khi xoa vu viec {incidentId}: {ex.Message}", ex);
         }
     }
 
