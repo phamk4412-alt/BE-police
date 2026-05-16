@@ -21,6 +21,9 @@ public static class SupportModule
         api.MapGet("/support/center-overview", SupportController.GetCenterOverviewAsync)
             .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
 
+        api.MapDelete("/support/incidents/{id:guid}", PoliceController.DeleteIncidentAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+
         api.MapGet("/support/news", SupportNewsController.GetNewsAsync)
             .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
