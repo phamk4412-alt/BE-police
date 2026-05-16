@@ -19,6 +19,9 @@ public static class PoliceModule
         api.MapPut("/incidents/{id:guid}/status", SupportController.UpdateIncidentStatusAsync)
             .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
+        api.MapDelete("/incidents/{id:guid}", PoliceController.DeleteIncidentAsync)
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+
         api.MapGet("/police/cases", PoliceController.GetIncidentBoardAsync)
             .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanViewIncidents);
 

@@ -280,6 +280,29 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         return new UpdateIncidentStatusResult("Da cap nhat trang thai.", payload);
     }
 
+    public async Task<IncidentResponse?> DeleteIncidentAsync(
+        IncidentDbContext dbContext,
+        IHubContext<IncidentHub> hubContext,
+        Guid incidentId,
+        CancellationToken cancellationToken = default)
+    {
+        var incident = await dbContext.Incidents.FirstOrDefaultAsync(
+            item => item.Id == incidentId,
+            cancellationToken);
+
+        if (incident is null)
+        {
+            return null;
+        }
+
+        var payload = incident.ToResponse();
+        dbContext.Incidents.Remove(incident);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await hubContext.Clients.All.SendAsync("IncidentDeleted", new { id = incidentId }, cancellationToken);
+
+        return payload;
+    }
+
     public async Task<IReadOnlyCollection<IncidentResponse>> GetReportHistoryAsync(
         IncidentDbContext dbContext,
         ActorSnapshot actor,

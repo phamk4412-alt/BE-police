@@ -89,6 +89,42 @@ public static class PoliceController
         return Results.Ok(result);
     }
 
+    public static async Task<IResult> DeleteIncidentAsync(
+        Guid id,
+        HttpContext context,
+        IncidentDbContext dbContext,
+        IncidentService incidentService,
+        AuditService auditService,
+        AuthService authService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        var actor = authService.GetActorSnapshot(context.User);
+        var deletedIncident = await incidentService.DeleteIncidentAsync(
+            dbContext,
+            hubContext,
+            id,
+            cancellationToken);
+
+        if (deletedIncident is null)
+        {
+            return Results.NotFound(new { message = "Khong tim thay vu viec." });
+        }
+
+        await auditService.WriteAsync(
+            dbContext,
+            context,
+            action: AuditActions.DeleteIncident,
+            entityType: AuditEntities.Incident,
+            entityId: deletedIncident.Id.ToString(),
+            summary: "Xoa vu viec.",
+            detail: $"{actor.DisplayName} xoa vu viec {deletedIncident.Title}.",
+            actor: actor,
+            cancellationToken: cancellationToken);
+
+        return Results.NoContent();
+    }
+
     public static async Task<IResult> GetHotspotsAsync(
         IncidentDbContext dbContext,
         IncidentService incidentService,

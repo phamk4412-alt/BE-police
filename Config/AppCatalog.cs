@@ -58,6 +58,7 @@ public static class AuditActions
     public const string Logout = "auth.logout";
     public const string AnalyzeIncident = "incident.analyze";
     public const string CreateIncident = "incident.create";
+    public const string DeleteIncident = "incident.delete";
     public const string UpdateIncidentStatus = "incident.status.update";
     public const string UpdateIncidentDenied = "incident.status.denied";
     public const string ExportIncidents = "incident.export";
