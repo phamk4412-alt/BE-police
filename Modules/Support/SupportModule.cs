@@ -1,11 +1,12 @@
 using PoliceBackend.Config;
 using PoliceBackend.Controllers;
+using PoliceBackend.Utils;
 
 namespace PoliceBackend.Modules.Support;
 
 public static class SupportModule
 {
-    public static IEndpointRouteBuilder MapSupportModule(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapSupportModule(this IEndpointRouteBuilder app, bool demoOpenAccess)
     {
         var api = app.MapGroup("/api");
 
@@ -22,7 +23,7 @@ public static class SupportModule
             .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
 
         api.MapDelete("/support/incidents/{id:guid}", SupportController.DeleteIncidentAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapGet("/support/news", SupportNewsController.GetNewsAsync)
             .RequireAuthorization(AuthorizationPolicies.CanManageNews);

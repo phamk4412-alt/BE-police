@@ -31,7 +31,7 @@ app.MapSharedRoutes();
 app.MapNewsModule();
 app.MapUserModule(demoOpenAccess);
 app.MapPoliceModule(demoOpenAccess);
-app.MapSupportModule();
+app.MapSupportModule(demoOpenAccess);
 app.MapAdminModule();
 app.MapRealtimeEndpoints(demoOpenAccess);
 
