@@ -44,7 +44,6 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         string? level,
         CancellationToken cancellationToken = default)
     {
-        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
         var incidents = await dbContext.Incidents
             .AsNoTracking()
             .ApplyFilters(
@@ -55,7 +54,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .ToListAsync(cancellationToken);
 
         return incidents
-            .Select(item => item.ToSupportResponse(phoneLookup))
+            .Select(item => item.ToSupportResponse())
             .ToArray();
     }
 
@@ -73,8 +72,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             return null;
         }
 
-        var phoneLookup = await BuildReporterPhoneLookupAsync(dbContext, cancellationToken);
-        return incident.ToSupportResponse(phoneLookup);
+        return incident.ToSupportResponse();
     }
 
     public async Task<IncidentResponse?> GetIncidentByIdAsync(
@@ -224,27 +222,6 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
     public string NormalizeStatus(string? status)
     {
         return analysisService.NormalizeStatus(status);
-    }
-
-    private static async Task<IReadOnlyDictionary<string, string>> BuildReporterPhoneLookupAsync(
-        IncidentDbContext dbContext,
-        CancellationToken cancellationToken)
-    {
-        var accountPhones = await dbContext.Accounts
-            .AsNoTracking()
-            .Select(item => new
-            {
-                item.DisplayName,
-                Phone = item.Username
-            })
-            .ToListAsync(cancellationToken);
-
-        return accountPhones
-            .GroupBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Select(item => item.Phone).FirstOrDefault() ?? string.Empty,
-                StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<UpdateIncidentStatusResult?> UpdateIncidentStatusAsync(

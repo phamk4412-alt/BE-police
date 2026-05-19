@@ -21,18 +21,6 @@ public sealed class NewsRecord
     public string UpdatedBy { get; set; } = string.Empty;
 }
 
-public sealed class NationalEventRecord
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public DateOnly EventDate { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public bool IsActive { get; set; } = true;
-    public int SortOrder { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-}
-
 public sealed record NewsQueryParameters(
     string? Category,
     bool? Newest,
@@ -90,11 +78,3 @@ public sealed record NewsListResponse(
     int PageSize,
     int TotalItems,
     int TotalPages);
-
-public sealed record UpcomingEventResponse(
-    Guid Id,
-    string Name,
-    DateOnly EventDate,
-    string Description,
-    int RemainingDays,
-    int SortOrder);

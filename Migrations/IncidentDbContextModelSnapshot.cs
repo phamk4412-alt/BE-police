@@ -16,22 +16,6 @@ partial class IncidentDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("ProductVersion", "9.0.0")
             .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
-        modelBuilder.Entity("PoliceBackend.Models.AccountRecord", b =>
-        {
-            b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
-            b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
-            b.Property<string>("DisplayName").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
-            b.Property<bool>("IsDemoAccount").HasColumnType("bit");
-            b.Property<string>("NormalizedUsername").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
-            b.Property<string>("PasswordHash").IsRequired().HasMaxLength(512).HasColumnType("nvarchar(512)");
-            b.Property<string>("Role").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
-            b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("datetimeoffset");
-            b.Property<string>("Username").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
-            b.HasKey("Id");
-            b.HasIndex("NormalizedUsername").IsUnique();
-            b.ToTable("Accounts");
-        });
-
         modelBuilder.Entity("PoliceBackend.Models.AuditLogRecord", b =>
         {
             b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
@@ -80,23 +64,6 @@ partial class IncidentDbContextModelSnapshot : ModelSnapshot
             b.HasIndex("Level");
             b.HasIndex("Status");
             b.ToTable("Incidents");
-        });
-
-        modelBuilder.Entity("PoliceBackend.Models.NationalEventRecord", b =>
-        {
-            b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
-            b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
-            b.Property<string>("Description").IsRequired().HasMaxLength(1000).HasColumnType("nvarchar(1000)");
-            b.Property<DateOnly>("EventDate").HasColumnType("date");
-            b.Property<bool>("IsActive").HasColumnType("bit");
-            b.Property<string>("Name").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
-            b.Property<int>("SortOrder").HasColumnType("int");
-            b.Property<DateTime>("UpdatedAt").HasColumnType("datetime2");
-            b.HasKey("Id");
-            b.HasIndex("EventDate");
-            b.HasIndex("IsActive");
-            b.HasIndex("SortOrder");
-            b.ToTable("NationalEvents");
         });
 
         modelBuilder.Entity("PoliceBackend.Models.NewsRecord", b =>

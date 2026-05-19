@@ -7,39 +7,10 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
 {
     public DbSet<IncidentRecord> Incidents => Set<IncidentRecord>();
     public DbSet<AuditLogRecord> AuditLogs => Set<AuditLogRecord>();
-    public DbSet<AccountRecord> Accounts => Set<AccountRecord>();
     public DbSet<NewsRecord> News => Set<NewsRecord>();
-    public DbSet<NationalEventRecord> NationalEvents => Set<NationalEventRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var account = modelBuilder.Entity<AccountRecord>();
-        account.ToTable("Accounts");
-        account.HasKey(item => item.Id);
-
-        account.Property(item => item.Username)
-            .HasMaxLength(120)
-            .IsRequired();
-
-        account.Property(item => item.NormalizedUsername)
-            .HasMaxLength(120)
-            .IsRequired();
-
-        account.Property(item => item.DisplayName)
-            .HasMaxLength(160)
-            .IsRequired();
-
-        account.Property(item => item.Role)
-            .HasMaxLength(32)
-            .IsRequired();
-
-        account.Property(item => item.PasswordHash)
-            .HasMaxLength(512)
-            .IsRequired();
-
-        account.HasIndex(item => item.NormalizedUsername)
-            .IsUnique();
-
         var incident = modelBuilder.Entity<IncidentRecord>();
         incident.ToTable("Incidents");
         incident.HasKey(item => item.Id);
@@ -189,20 +160,5 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         news.HasIndex(item => item.FeaturedOrder);
         news.HasIndex(item => item.Category);
 
-        var nationalEvent = modelBuilder.Entity<NationalEventRecord>();
-        nationalEvent.ToTable("NationalEvents");
-        nationalEvent.HasKey(item => item.Id);
-
-        nationalEvent.Property(item => item.Name)
-            .HasMaxLength(200)
-            .IsRequired();
-
-        nationalEvent.Property(item => item.Description)
-            .HasMaxLength(1000)
-            .IsRequired();
-
-        nationalEvent.HasIndex(item => item.EventDate);
-        nationalEvent.HasIndex(item => item.IsActive);
-        nationalEvent.HasIndex(item => item.SortOrder);
     }
 }

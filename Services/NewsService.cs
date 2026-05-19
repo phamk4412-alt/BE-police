@@ -276,36 +276,6 @@ public sealed class NewsService
         return (news.ToResponse(), null);
     }
 
-    public async Task<IReadOnlyCollection<UpcomingEventResponse>> GetUpcomingEventsAsync(
-        IncidentDbContext dbContext,
-        DateOnly? today = null,
-        CancellationToken cancellationToken = default)
-    {
-        var currentDate = today ?? DateOnly.FromDateTime(DateTime.Now);
-        var events = await dbContext.NationalEvents
-            .AsNoTracking()
-            .Where(item => item.IsActive)
-            .OrderBy(item => item.SortOrder)
-            .ThenBy(item => item.EventDate)
-            .ToListAsync(cancellationToken);
-
-        return events
-            .Select(item =>
-            {
-                var nextDate = ResolveNextOccurrence(item.EventDate, currentDate);
-                return new UpcomingEventResponse(
-                    item.Id,
-                    item.Name,
-                    nextDate,
-                    item.Description,
-                    nextDate.DayNumber - currentDate.DayNumber,
-                    item.SortOrder);
-            })
-            .OrderBy(item => item.RemainingDays)
-            .ThenBy(item => item.SortOrder)
-            .ToArray();
-    }
-
     private static bool ValidateRequired(string title, string content, out string? error)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -375,12 +345,6 @@ public sealed class NewsService
         }
 
         return current;
-    }
-
-    private static DateOnly ResolveNextOccurrence(DateOnly eventDate, DateOnly today)
-    {
-        var nextDate = new DateOnly(today.Year, eventDate.Month, eventDate.Day);
-        return nextDate < today ? nextDate.AddYears(1) : nextDate;
     }
 
     private static async Task NormalizeFeaturedOrdersAsync(
