@@ -19,4 +19,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.14.6" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Services\AuditService.cs">
+      <DependentUpon>AuthService.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>
