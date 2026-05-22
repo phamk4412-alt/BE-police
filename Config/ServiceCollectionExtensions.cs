@@ -124,6 +124,7 @@ public static class ServiceCollectionExtensions
         {
             client.BaseAddress = new Uri("https://api.clerk.com/v1/");
         });
+        services.AddHttpClient<FacePlusPlusService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();

@@ -11,6 +11,7 @@ public static class SharedRoutes
 
         app.MapPost("/api/auth/logout", AuthController.LogoutAsync);
         app.MapGet("/api/auth/me", AuthController.GetCurrentUser);
+        app.MapPost("/api/identity/face-compare", IdentityController.CompareFaceAsync);
 
         app.MapGet("/api/maps/hcm-boundary", SystemController.GetBoundaryGeoJson);
         app.MapGet("/api/maps/geojson/{fileName}", SystemController.GetGeoJson);
