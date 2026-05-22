@@ -8,6 +8,7 @@ public sealed class FacePlusPlusService
     private const string DefaultCompareEndpoint = "https://api-us.faceplusplus.com/facepp/v3/compare";
     private const string ChinaCompareEndpoint = "https://api-cn.faceplusplus.com/facepp/v3/compare";
     private const double DefaultConfidenceThreshold = 73.975;
+    private const int DefaultRequestTimeoutSeconds = 12;
 
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
@@ -75,6 +76,12 @@ public sealed class FacePlusPlusService
         string liveImage,
         CancellationToken cancellationToken)
     {
+        using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var timeoutSeconds = _configuration.GetValue(
+            "FacePlusPlus:RequestTimeoutSeconds",
+            DefaultRequestTimeoutSeconds);
+        timeoutTokenSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(3, timeoutSeconds)));
+
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["api_key"] = apiKey,
@@ -83,36 +90,49 @@ public sealed class FacePlusPlusService
             ["image_base64_2"] = liveImage
         });
 
-        using var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        HttpResponseMessage response;
 
-        using var document = JsonDocument.Parse(responseBody);
-        var root = document.RootElement;
-
-        var hasApiError = root.TryGetProperty("error_message", out var errorElement);
-
-        if (!response.IsSuccessStatusCode || hasApiError)
+        try
         {
-            var errorMessage = errorElement.ValueKind == JsonValueKind.String
-                ? errorElement.GetString()
-                : response.ReasonPhrase;
-
-            throw new InvalidOperationException($"Face++ compare failed at {endpoint}: {errorMessage ?? "unknown error"}");
+            response = await _httpClient.PostAsync(endpoint, content, timeoutTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException($"Face++ compare timeout at {endpoint}.");
         }
 
-        var confidence = root.TryGetProperty("confidence", out var confidenceElement)
-            ? confidenceElement.GetDouble()
-            : 0;
-        var threshold = ResolveThreshold(root);
-        var requestId = root.TryGetProperty("request_id", out var requestIdElement)
-            ? requestIdElement.GetString() ?? string.Empty
-            : string.Empty;
+        using (response)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(timeoutTokenSource.Token);
 
-        return new FaceCompareResponse(
-            confidence >= threshold,
-            Math.Round(confidence, 3),
-            Math.Round(threshold, 3),
-            requestId);
+            using var document = JsonDocument.Parse(responseBody);
+            var root = document.RootElement;
+
+            var hasApiError = root.TryGetProperty("error_message", out var errorElement);
+
+            if (!response.IsSuccessStatusCode || hasApiError)
+            {
+                var errorMessage = errorElement.ValueKind == JsonValueKind.String
+                    ? errorElement.GetString()
+                    : response.ReasonPhrase;
+
+                throw new InvalidOperationException($"Face++ compare failed at {endpoint}: {errorMessage ?? "unknown error"}");
+            }
+
+            var confidence = root.TryGetProperty("confidence", out var confidenceElement)
+                ? confidenceElement.GetDouble()
+                : 0;
+            var threshold = ResolveThreshold(root);
+            var requestId = root.TryGetProperty("request_id", out var requestIdElement)
+                ? requestIdElement.GetString() ?? string.Empty
+                : string.Empty;
+
+            return new FaceCompareResponse(
+                confidence >= threshold,
+                Math.Round(confidence, 3),
+                Math.Round(threshold, 3),
+                requestId);
+        }
     }
 
     private double ResolveThreshold(JsonElement root)
