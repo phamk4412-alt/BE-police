@@ -11,7 +11,6 @@ public static class NewsModule
         api.MapGet("/news/featured", NewsController.GetFeaturedAsync);
         api.MapGet("/news", NewsController.GetNewsAsync);
         api.MapGet("/news/{id:guid}", NewsController.GetNewsByIdAsync);
-        api.MapGet("/events/upcoming", NewsController.GetUpcomingEventsAsync);
 
         return app;
     }

@@ -76,14 +76,6 @@ public static class AdminController
         return Results.Ok(await incidentService.GetStatisticsAsync(dbContext, cancellationToken));
     }
 
-    public static async Task<IResult> GetAccountsAsync(
-        IncidentDbContext dbContext,
-        AuthService authService,
-        CancellationToken cancellationToken)
-    {
-        return Results.Ok(await authService.GetAccountsAsync(dbContext, cancellationToken));
-    }
-
     public static async Task<IResult> GetClerkAccountsAsync(
         ClerkAdminService clerkAdminService,
         CancellationToken cancellationToken)

@@ -41,9 +41,7 @@ public static class ModelMappingExtensions
         incident.CreatedAt,
         incident.UpdatedAt);
 
-    public static SupportIncidentResponse ToSupportResponse(
-        this IncidentRecord incident,
-        IReadOnlyDictionary<string, string> accountPhones) => new(
+    public static SupportIncidentResponse ToSupportResponse(this IncidentRecord incident) => new(
         incident.Id,
         incident.Title,
         incident.Detail,
@@ -53,7 +51,7 @@ public static class ModelMappingExtensions
         incident.Level,
         ToSupportStatus(incident.Status),
         incident.ReporterName,
-        ResolvePhone(incident, accountPhones),
+        incident.ReporterPhone,
         incident.ImageUrls
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         incident.CreatedAt);
@@ -86,17 +84,4 @@ public static class ModelMappingExtensions
         _ => "processing"
     };
 
-    private static string ResolvePhone(
-        IncidentRecord incident,
-        IReadOnlyDictionary<string, string> accountPhones)
-    {
-        if (!string.IsNullOrWhiteSpace(incident.ReporterPhone))
-        {
-            return incident.ReporterPhone;
-        }
-
-        return accountPhones.TryGetValue(incident.ReporterName, out var phone)
-            ? phone
-            : string.Empty;
-    }
 }

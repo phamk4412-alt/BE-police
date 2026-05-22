@@ -43,11 +43,4 @@ public static class NewsController
             : Results.Ok(news);
     }
 
-    public static async Task<IResult> GetUpcomingEventsAsync(
-        IncidentDbContext dbContext,
-        NewsService newsService,
-        CancellationToken cancellationToken)
-    {
-        return Results.Ok(await newsService.GetUpcomingEventsAsync(dbContext, cancellationToken: cancellationToken));
-    }
 }

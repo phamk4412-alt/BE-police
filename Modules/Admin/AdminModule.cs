@@ -18,9 +18,6 @@ public static class AdminModule
         api.MapGet("/admin/statistics", AdminController.GetStatisticsAsync)
             .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
-        api.MapGet("/admin/accounts", AdminController.GetAccountsAsync)
-            .RequireAuthorization(AuthorizationPolicies.AdminOnly);
-
         api.MapGet("/admin/clerk/accounts", AdminController.GetClerkAccountsAsync);
 
         api.MapPatch("/admin/clerk/accounts/{userId}/role", AdminController.UpdateClerkAccountRoleAsync);
