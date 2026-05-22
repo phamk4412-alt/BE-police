@@ -6,6 +6,7 @@ namespace PoliceBackend.Services;
 public sealed class FacePlusPlusService
 {
     private const string DefaultCompareEndpoint = "https://api-us.faceplusplus.com/facepp/v3/compare";
+    private const string ChinaCompareEndpoint = "https://api-cn.faceplusplus.com/facepp/v3/compare";
     private const double DefaultConfidenceThreshold = 73.975;
 
     private readonly HttpClient _httpClient;
@@ -37,7 +38,43 @@ public sealed class FacePlusPlusService
             throw new InvalidOperationException("Thieu anh CCCD hoac anh khuon mat.");
         }
 
-        var endpoint = _configuration["FacePlusPlus:CompareEndpoint"] ?? DefaultCompareEndpoint;
+        var configuredEndpoint = _configuration["FacePlusPlus:CompareEndpoint"];
+        var endpoints = string.IsNullOrWhiteSpace(configuredEndpoint)
+            ? new[] { DefaultCompareEndpoint, ChinaCompareEndpoint }
+            : new[] { configuredEndpoint };
+        InvalidOperationException? lastException = null;
+
+        foreach (var endpoint in endpoints)
+        {
+            try
+            {
+                return await CompareAtEndpointAsync(
+                    endpoint,
+                    apiKey,
+                    apiSecret,
+                    cccdImage,
+                    liveImage,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException exception) when (
+                endpoints.Length > 1 &&
+                exception.Message.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                lastException = exception;
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("Face++ compare failed.");
+    }
+
+    private async Task<FaceCompareResponse> CompareAtEndpointAsync(
+        string endpoint,
+        string apiKey,
+        string apiSecret,
+        string cccdImage,
+        string liveImage,
+        CancellationToken cancellationToken)
+    {
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["api_key"] = apiKey,
@@ -60,7 +97,7 @@ public sealed class FacePlusPlusService
                 ? errorElement.GetString()
                 : response.ReasonPhrase;
 
-            throw new InvalidOperationException($"Face++ compare failed: {errorMessage ?? "unknown error"}");
+            throw new InvalidOperationException($"Face++ compare failed at {endpoint}: {errorMessage ?? "unknown error"}");
         }
 
         var confidence = root.TryGetProperty("confidence", out var confidenceElement)
