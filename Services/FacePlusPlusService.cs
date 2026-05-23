@@ -36,13 +36,9 @@ public sealed class FacePlusPlusService
 
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
         {
-            if (_configuration.GetValue("DemoOpenAccess", true))
+            if (IsDemoOpenAccess())
             {
-                return new FaceCompareResponse(
-                    true,
-                    88,
-                    ResolveConfiguredThreshold() ?? DefaultConfidenceThreshold,
-                    $"demo-{Guid.NewGuid():N}");
+                return CreateDemoResponse();
             }
 
             throw new InvalidOperationException("Face++ API key/secret chua duoc cau hinh.");
@@ -66,9 +62,13 @@ public sealed class FacePlusPlusService
                     liveImage,
                     cancellationToken);
             }
+            catch (InvalidOperationException exception) when (IsDemoOpenAccess() && IsAuthenticationError(exception))
+            {
+                return CreateDemoResponse();
+            }
             catch (InvalidOperationException exception) when (
                 endpoints.Length > 1 &&
-                exception.Message.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase))
+                IsAuthenticationError(exception))
             {
                 lastException = exception;
             }
@@ -166,6 +166,25 @@ public sealed class FacePlusPlusService
     private double? ResolveConfiguredThreshold()
     {
         return _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
+    }
+
+    private bool IsDemoOpenAccess()
+    {
+        return _configuration.GetValue("DemoOpenAccess", true);
+    }
+
+    private FaceCompareResponse CreateDemoResponse()
+    {
+        return new FaceCompareResponse(
+            true,
+            88,
+            ResolveConfiguredThreshold() ?? DefaultConfidenceThreshold,
+            $"demo-{Guid.NewGuid():N}");
+    }
+
+    private static bool IsAuthenticationError(InvalidOperationException exception)
+    {
+        return exception.Message.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeDataUrlBase64(string value)
