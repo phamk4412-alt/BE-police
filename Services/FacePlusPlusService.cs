@@ -36,11 +36,6 @@ public sealed class FacePlusPlusService
 
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
         {
-            if (IsDemoOpenAccess())
-            {
-                return CreateDemoResponse();
-            }
-
             throw new InvalidOperationException("Face++ API key/secret chua duoc cau hinh.");
         }
 
@@ -61,10 +56,6 @@ public sealed class FacePlusPlusService
                     cccdImage,
                     liveImage,
                     cancellationToken);
-            }
-            catch (InvalidOperationException exception) when (IsDemoOpenAccess() && IsAuthenticationError(exception))
-            {
-                return CreateDemoResponse();
             }
             catch (InvalidOperationException exception) when (
                 endpoints.Length > 1 &&
@@ -166,20 +157,6 @@ public sealed class FacePlusPlusService
     private double? ResolveConfiguredThreshold()
     {
         return _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
-    }
-
-    private bool IsDemoOpenAccess()
-    {
-        return _configuration.GetValue("DemoOpenAccess", true);
-    }
-
-    private FaceCompareResponse CreateDemoResponse()
-    {
-        return new FaceCompareResponse(
-            true,
-            88,
-            ResolveConfiguredThreshold() ?? DefaultConfidenceThreshold,
-            $"demo-{Guid.NewGuid():N}");
     }
 
     private static bool IsAuthenticationError(InvalidOperationException exception)
