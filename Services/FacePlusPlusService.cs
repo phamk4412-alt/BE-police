@@ -164,8 +164,13 @@ public sealed class FacePlusPlusService
         return exception.Message.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string NormalizeDataUrlBase64(string value)
+    public static string NormalizeDataUrlBase64(string? value)
     {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
         var commaIndex = value.IndexOf(',', StringComparison.Ordinal);
         var base64 = commaIndex >= 0 ? value[(commaIndex + 1)..] : value;
 

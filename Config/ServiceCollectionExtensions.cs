@@ -29,6 +29,9 @@ public static class ServiceCollectionExtensions
             options.MultipartBodyLengthLimit = 10 * 1024 * 1024;
         });
 
+        services.AddMemoryCache();
+        services.AddHttpContextAccessor();
+
         services.AddCors(options =>
         {
             options.AddPolicy(CorsPolicyNames.OpenRealtime, policy =>
@@ -125,6 +128,7 @@ public static class ServiceCollectionExtensions
             client.BaseAddress = new Uri("https://api.clerk.com/v1/");
         });
         services.AddHttpClient<FacePlusPlusService>();
+        services.AddSingleton<IdentityVerificationSessionService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();
