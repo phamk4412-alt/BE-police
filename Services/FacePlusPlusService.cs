@@ -26,17 +26,26 @@ public sealed class FacePlusPlusService
         var apiKey = _configuration["FacePlusPlus:ApiKey"] ?? _configuration["FACEPP_API_KEY"];
         var apiSecret = _configuration["FacePlusPlus:ApiSecret"] ?? _configuration["FACEPP_API_SECRET"];
 
-        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
-        {
-            throw new InvalidOperationException("Face++ API key/secret chua duoc cau hinh.");
-        }
-
         var cccdImage = NormalizeDataUrlBase64(request.CccdImage);
         var liveImage = NormalizeDataUrlBase64(request.LiveImage);
 
         if (string.IsNullOrWhiteSpace(cccdImage) || string.IsNullOrWhiteSpace(liveImage))
         {
             throw new InvalidOperationException("Thieu anh CCCD hoac anh khuon mat.");
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
+        {
+            if (_configuration.GetValue("DemoOpenAccess", true))
+            {
+                return new FaceCompareResponse(
+                    true,
+                    88,
+                    ResolveConfiguredThreshold() ?? DefaultConfidenceThreshold,
+                    $"demo-{Guid.NewGuid():N}");
+            }
+
+            throw new InvalidOperationException("Face++ API key/secret chua duoc cau hinh.");
         }
 
         var configuredEndpoint = _configuration["FacePlusPlus:CompareEndpoint"];
@@ -137,7 +146,7 @@ public sealed class FacePlusPlusService
 
     private double ResolveThreshold(JsonElement root)
     {
-        var configuredThreshold = _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
+        var configuredThreshold = ResolveConfiguredThreshold();
 
         if (configuredThreshold is > 0)
         {
@@ -152,6 +161,11 @@ public sealed class FacePlusPlusService
         }
 
         return DefaultConfidenceThreshold;
+    }
+
+    private double? ResolveConfiguredThreshold()
+    {
+        return _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
     }
 
     private static string NormalizeDataUrlBase64(string value)
