@@ -15,10 +15,8 @@ public static class SharedRoutes
         app.MapPost("/api/identity/cccd", IdentityController.SaveCccdState);
         app.MapPost("/api/identity/face", IdentityController.SaveFaceState);
         app.MapPost("/api/identity/reset", IdentityController.ResetState);
-        app.MapGet("/api/identity/faceplusplus/status", IdentityController.GetFacePlusPlusStatusAsync);
         app.MapPost("/api/identity/didit/session", IdentityController.CreateDiditSessionAsync);
         app.MapPost("/api/identity/didit/session/{sessionId}/complete", IdentityController.CompleteDiditSessionAsync);
-        app.MapPost("/api/identity/face-compare", IdentityController.CompareFaceAsync);
 
         app.MapGet("/api/maps/hcm-boundary", SystemController.GetBoundaryGeoJson);
         app.MapGet("/api/maps/geojson/{fileName}", SystemController.GetGeoJson);

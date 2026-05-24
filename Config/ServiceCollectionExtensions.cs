@@ -127,7 +127,6 @@ public static class ServiceCollectionExtensions
         {
             client.BaseAddress = new Uri("https://api.clerk.com/v1/");
         });
-        services.AddHttpClient<FacePlusPlusService>();
         services.AddHttpClient<DiditVerificationService>();
         services.AddSingleton<IdentityVerificationSessionService>();
         services.AddScoped<AuthService>();

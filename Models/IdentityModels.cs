@@ -1,15 +1,5 @@
 namespace PoliceBackend.Models;
 
-public sealed record FaceCompareRequest(
-    string? CccdImage,
-    string LiveImage);
-
-public sealed record FaceCompareResponse(
-    bool IsMatch,
-    double Confidence,
-    double Threshold,
-    string RequestId);
-
 public sealed record IdentityVerificationStateResponse(
     bool CccdVerified,
     bool FaceScanned,

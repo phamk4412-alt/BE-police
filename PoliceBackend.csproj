@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>PoliceBackend</RootNamespace>
     <AssemblyName>PoliceBackend</AssemblyName>
-    <UserSecretsId>police-backend-faceplusplus</UserSecretsId>
+    <UserSecretsId>police-backend</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
   <ItemGroup>
