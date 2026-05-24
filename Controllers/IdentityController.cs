@@ -53,6 +53,57 @@ public static class IdentityController
         return Results.Ok(await facePlusPlusService.GetConfigurationStatusAsync(cancellationToken));
     }
 
+    public static async Task<IResult> CreateDiditSessionAsync(
+        HttpContext context,
+        CreateDiditSessionRequest request,
+        DiditVerificationService diditVerificationService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await diditVerificationService.CreateSessionAsync(
+                context,
+                request,
+                cancellationToken));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Results.Problem(
+                title: "Khong the tao phien Didit",
+                detail: exception.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    public static async Task<IResult> CompleteDiditSessionAsync(
+        HttpContext context,
+        string sessionId,
+        DiditVerificationService diditVerificationService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await diditVerificationService.CompleteSessionAsync(
+                context,
+                sessionId,
+                cancellationToken));
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Results.Problem(
+                title: "Khong the doc ket qua Didit",
+                detail: exception.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+        catch (JsonException)
+        {
+            return Results.Problem(
+                title: "Khong the doc phan hoi Didit",
+                detail: "Didit tra ve phan hoi khong hop le.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+    }
+
     public static async Task<IResult> CompareFaceAsync(
         HttpContext context,
         FaceCompareRequest request,

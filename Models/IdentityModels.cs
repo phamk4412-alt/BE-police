@@ -28,3 +28,16 @@ public sealed record UpdateFaceVerificationRequest(
     string? FaceImage,
     bool FaceScanned,
     bool FaceSkipped);
+
+public sealed record CreateDiditSessionRequest(
+    string CallbackUrl);
+
+public sealed record DiditSessionResponse(
+    string SessionId,
+    string Url);
+
+public sealed record DiditDecisionResponse(
+    string SessionId,
+    string Status,
+    bool IsApproved,
+    string? Detail);
