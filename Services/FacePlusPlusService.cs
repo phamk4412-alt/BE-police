@@ -6,7 +6,6 @@ namespace PoliceBackend.Services;
 public sealed class FacePlusPlusService
 {
     private const string DefaultCompareEndpoint = "https://api-us.faceplusplus.com/facepp/v3/compare";
-    private const string ChinaCompareEndpoint = "https://api-cn.faceplusplus.com/facepp/v3/compare";
     private const double DefaultConfidenceThreshold = 73.975;
     private const int DefaultRequestTimeoutSeconds = 12;
 
@@ -39,33 +38,15 @@ public sealed class FacePlusPlusService
             throw new InvalidOperationException("Face++ API key/secret chua duoc cau hinh.");
         }
 
-        var configuredEndpoint = _configuration["FacePlusPlus:CompareEndpoint"];
-        var endpoints = string.IsNullOrWhiteSpace(configuredEndpoint)
-            ? new[] { DefaultCompareEndpoint, ChinaCompareEndpoint }
-            : new[] { configuredEndpoint };
-        InvalidOperationException? lastException = null;
+        var endpoint = ResolveCompareEndpoint();
 
-        foreach (var endpoint in endpoints)
-        {
-            try
-            {
-                return await CompareAtEndpointAsync(
-                    endpoint,
-                    apiKey,
-                    apiSecret,
-                    cccdImage,
-                    liveImage,
-                    cancellationToken);
-            }
-            catch (InvalidOperationException exception) when (
-                endpoints.Length > 1 &&
-                IsAuthenticationError(exception))
-            {
-                lastException = exception;
-            }
-        }
-
-        throw lastException ?? new InvalidOperationException("Face++ compare failed.");
+        return await CompareAtEndpointAsync(
+            endpoint,
+            apiKey,
+            apiSecret,
+            cccdImage,
+            liveImage,
+            cancellationToken);
     }
 
     private async Task<FaceCompareResponse> CompareAtEndpointAsync(
@@ -116,6 +97,12 @@ public sealed class FacePlusPlusService
                     ? errorElement.GetString()
                     : response.ReasonPhrase;
 
+                if (IsAuthenticationError(errorMessage))
+                {
+                    throw new InvalidOperationException(
+                        $"Face++ xac thuc that bai tai {endpoint}. Kiem tra ApiKey/ApiSecret va dung endpoint cung vung voi tai khoan Face++.");
+                }
+
                 throw new InvalidOperationException($"Face++ compare failed at {endpoint}: {errorMessage ?? "unknown error"}");
             }
 
@@ -159,9 +146,18 @@ public sealed class FacePlusPlusService
         return _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
     }
 
-    private static bool IsAuthenticationError(InvalidOperationException exception)
+    private string ResolveCompareEndpoint()
     {
-        return exception.Message.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase);
+        var configuredEndpoint = _configuration["FacePlusPlus:CompareEndpoint"];
+
+        return string.IsNullOrWhiteSpace(configuredEndpoint)
+            ? DefaultCompareEndpoint
+            : configuredEndpoint.Trim();
+    }
+
+    private static bool IsAuthenticationError(string? errorMessage)
+    {
+        return errorMessage?.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     public static string NormalizeDataUrlBase64(string? value)
