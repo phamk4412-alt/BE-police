@@ -34,7 +34,7 @@ public sealed class DiditVerificationService
         }
 
         var apiKey = ResolveConfigurationValue("Didit:ApiKey", "DIDIT_API_KEY");
-        var workflowId = ResolveConfigurationValue("Didit:WorkflowId", "DIDIT_WORKFLOW_ID");
+        var workflowId = await ResolveWorkflowIdAsync(apiKey, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(workflowId))
         {
@@ -133,6 +133,51 @@ public sealed class DiditVerificationService
             : configured.TrimEnd('/');
     }
 
+    private async Task<string?> ResolveWorkflowIdAsync(
+        string? apiKey,
+        CancellationToken cancellationToken)
+    {
+        var configured = ResolveConfigurationValue("Didit:WorkflowId", "DIDIT_WORKFLOW_ID");
+
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured;
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return null;
+        }
+
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{ResolveBaseUrl()}/v3/workflows/");
+        message.Headers.TryAddWithoutValidation("x-api-key", apiKey);
+
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Didit list workflows failed: {ExtractDiditError(body) ?? response.ReasonPhrase}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+
+        if (!document.RootElement.TryGetProperty("results", out var results) ||
+            results.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("Didit workflows response khong hop le.");
+        }
+
+        var workflowId = SelectWorkflowId(results);
+
+        if (string.IsNullOrWhiteSpace(workflowId))
+        {
+            throw new InvalidOperationException("Didit chua co workflow phu hop de tao phien quet mat.");
+        }
+
+        return workflowId;
+    }
+
     private string? ResolveConfigurationValue(params string[] keys)
     {
         foreach (var key in keys)
@@ -197,6 +242,52 @@ public sealed class DiditVerificationService
             status.Equals("approve", StringComparison.OrdinalIgnoreCase) ||
             status.Equals("accepted", StringComparison.OrdinalIgnoreCase) ||
             status.Equals("success", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? SelectWorkflowId(JsonElement workflows)
+    {
+        JsonElement? bestWorkflow = null;
+        var bestScore = -1;
+
+        foreach (var workflow in workflows.EnumerateArray())
+        {
+            var status = GetString(workflow, "status");
+            var type = GetString(workflow, "workflow_type");
+            var isArchived = workflow.TryGetProperty("is_archived", out var archivedElement) &&
+                archivedElement.ValueKind == JsonValueKind.True;
+
+            if (isArchived || !string.Equals(status, "published", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var score = 0;
+
+            if (workflow.TryGetProperty("is_default", out var defaultElement) &&
+                defaultElement.ValueKind == JsonValueKind.True)
+            {
+                score += 20;
+            }
+
+            if (string.Equals(type, "biometric_authentication", StringComparison.OrdinalIgnoreCase))
+            {
+                score += 10;
+            }
+            else if (string.Equals(type, "kyc", StringComparison.OrdinalIgnoreCase))
+            {
+                score += 5;
+            }
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestWorkflow = workflow;
+            }
+        }
+
+        return bestWorkflow is JsonElement selectedWorkflow
+            ? GetString(selectedWorkflow, "workflow_id", "uuid")
+            : null;
     }
 
     private static string? GetString(JsonElement element, params string[] propertyNames)
