@@ -22,8 +22,8 @@ public sealed class FacePlusPlusService
         FaceCompareRequest request,
         CancellationToken cancellationToken)
     {
-        var apiKey = _configuration["FacePlusPlus:ApiKey"] ?? _configuration["FACEPP_API_KEY"];
-        var apiSecret = _configuration["FacePlusPlus:ApiSecret"] ?? _configuration["FACEPP_API_SECRET"];
+        var apiKey = ResolveConfigurationValue("FacePlusPlus:ApiKey", "FACEPP_API_KEY");
+        var apiSecret = ResolveConfigurationValue("FacePlusPlus:ApiSecret", "FACEPP_API_SECRET");
 
         var cccdImage = NormalizeDataUrlBase64(request.CccdImage);
         var liveImage = NormalizeDataUrlBase64(request.LiveImage);
@@ -153,6 +153,21 @@ public sealed class FacePlusPlusService
         return string.IsNullOrWhiteSpace(configuredEndpoint)
             ? DefaultCompareEndpoint
             : configuredEndpoint.Trim();
+    }
+
+    private string? ResolveConfigurationValue(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = _configuration[key];
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return null;
     }
 
     private static bool IsAuthenticationError(string? errorMessage)
