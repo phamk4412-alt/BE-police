@@ -46,6 +46,13 @@ public static class IdentityController
         return Results.Ok(identityVerificationSessionService.Reset(context));
     }
 
+    public static async Task<IResult> GetFacePlusPlusStatusAsync(
+        FacePlusPlusService facePlusPlusService,
+        CancellationToken cancellationToken)
+    {
+        return Results.Ok(await facePlusPlusService.GetConfigurationStatusAsync(cancellationToken));
+    }
+
     public static async Task<IResult> CompareFaceAsync(
         HttpContext context,
         FaceCompareRequest request,

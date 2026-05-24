@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using PoliceBackend.Models;
 
@@ -49,6 +51,34 @@ public sealed class FacePlusPlusService
             cancellationToken);
     }
 
+    public async Task<object> GetConfigurationStatusAsync(CancellationToken cancellationToken)
+    {
+        var apiKey = ResolveConfigurationValue("FacePlusPlus:ApiKey", "FACEPP_API_KEY");
+        var apiSecret = ResolveConfigurationValue("FacePlusPlus:ApiSecret", "FACEPP_API_SECRET");
+        var endpoint = ResolveCompareEndpoint();
+        var status = "not_configured";
+        string? facePlusPlusError = null;
+
+        if (!string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret))
+        {
+            status = await CheckAuthenticationAsync(endpoint, apiKey, apiSecret, cancellationToken);
+            facePlusPlusError = status == "authentication_failed" ? "AUTHENTICATION_ERROR" : null;
+        }
+
+        return new
+        {
+            Endpoint = endpoint,
+            ApiKeyConfigured = !string.IsNullOrWhiteSpace(apiKey),
+            ApiSecretConfigured = !string.IsNullOrWhiteSpace(apiSecret),
+            ApiKeyLength = apiKey?.Length ?? 0,
+            ApiSecretLength = apiSecret?.Length ?? 0,
+            ApiKeyFingerprint = CreateFingerprint(apiKey),
+            ApiSecretFingerprint = CreateFingerprint(apiSecret),
+            FacePlusPlusStatus = status,
+            FacePlusPlusError = facePlusPlusError
+        };
+    }
+
     private async Task<FaceCompareResponse> CompareAtEndpointAsync(
         string endpoint,
         string apiKey,
@@ -63,13 +93,13 @@ public sealed class FacePlusPlusService
             DefaultRequestTimeoutSeconds);
         timeoutTokenSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(3, timeoutSeconds)));
 
-        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        using var content = new MultipartFormDataContent
         {
-            ["api_key"] = apiKey,
-            ["api_secret"] = apiSecret,
-            ["image_base64_1"] = cccdImage,
-            ["image_base64_2"] = liveImage
-        });
+            { new StringContent(apiKey), "api_key" },
+            { new StringContent(apiSecret), "api_secret" },
+            { new StringContent(cccdImage), "image_base64_1" },
+            { new StringContent(liveImage), "image_base64_2" }
+        };
 
         HttpResponseMessage response;
 
@@ -146,6 +176,46 @@ public sealed class FacePlusPlusService
         return _configuration.GetValue<double?>("FacePlusPlus:ConfidenceThreshold");
     }
 
+    private async Task<string> CheckAuthenticationAsync(
+        string endpoint,
+        string apiKey,
+        string apiSecret,
+        CancellationToken cancellationToken)
+    {
+        using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var timeoutSeconds = _configuration.GetValue(
+            "FacePlusPlus:RequestTimeoutSeconds",
+            DefaultRequestTimeoutSeconds);
+        timeoutTokenSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(3, timeoutSeconds)));
+
+        using var content = new MultipartFormDataContent
+        {
+            { new StringContent(apiKey), "api_key" },
+            { new StringContent(apiSecret), "api_secret" }
+        };
+
+        try
+        {
+            using var response = await _httpClient.PostAsync(endpoint, content, timeoutTokenSource.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(timeoutTokenSource.Token);
+
+            if (responseBody.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                return "authentication_failed";
+            }
+
+            return "authentication_accepted";
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return "timeout";
+        }
+        catch (HttpRequestException)
+        {
+            return "network_error";
+        }
+    }
+
     private string ResolveCompareEndpoint()
     {
         var configuredEndpoint = _configuration["FacePlusPlus:CompareEndpoint"];
@@ -173,6 +243,18 @@ public sealed class FacePlusPlusService
     private static bool IsAuthenticationError(string? errorMessage)
     {
         return errorMessage?.Contains("AUTHENTICATION_ERROR", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string? CreateFingerprint(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim()));
+
+        return Convert.ToHexString(hash)[..12];
     }
 
     public static string NormalizeDataUrlBase64(string? value)
