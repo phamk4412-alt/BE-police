@@ -20,7 +20,8 @@ public sealed record UpdateFaceVerificationRequest(
     bool FaceSkipped);
 
 public sealed record CreateDiditSessionRequest(
-    string CallbackUrl);
+    string CallbackUrl,
+    string? CallbackMethod = null);
 
 public sealed record DiditSessionResponse(
     string SessionId,

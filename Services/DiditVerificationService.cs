@@ -49,6 +49,7 @@ public sealed class DiditVerificationService
             {
                 workflow_id = workflowId,
                 callback = callbackUrl,
+                callback_method = NormalizeCallbackMethod(request.CallbackMethod),
                 metadata = new
                 {
                     source = "police-smart-hub-face-scan"
@@ -203,6 +204,17 @@ public sealed class DiditVerificationService
         }
 
         return uri.ToString();
+    }
+
+    private static string NormalizeCallbackMethod(string? callbackMethod)
+    {
+        return callbackMethod?.Trim().ToLowerInvariant() switch
+        {
+            "initiator" => "initiator",
+            "completer" => "completer",
+            "both" => "both",
+            _ => "both"
+        };
     }
 
     private static string ResolveDecisionStatus(JsonElement root)
