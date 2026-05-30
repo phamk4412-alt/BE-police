@@ -11,28 +11,28 @@ public static class PoliceModule
         var api = app.MapGroup("/api");
 
         api.MapGet("/incidents", PoliceController.GetIncidentBoardAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapPatch("/incidents/{id:guid}/status", PoliceController.UpdateIncidentStatusAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapPut("/incidents/{id:guid}/status", SupportController.UpdateIncidentStatusAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapDelete("/incidents/{id:guid}", PoliceController.DeleteIncidentAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/police/cases", PoliceController.GetIncidentBoardAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapPatch("/police/cases/{id:guid}/status", PoliceController.UpdateIncidentStatusAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/police/hotspots", PoliceController.GetHotspotsAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/police/patrol-vehicles", PoliceController.GetPatrolVehiclesAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/police/locations", PoliceController.GetActivePoliceLocations)
             .AllowAnonymous();

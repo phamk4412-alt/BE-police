@@ -11,37 +11,37 @@ public static class SupportModule
         var api = app.MapGroup("/api");
 
         api.MapGet("/support/dispatch", SupportController.GetDispatchBoardAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/support/dispatch-board", SupportController.GetDispatchBoardAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/support/call-intake", SupportController.GetCallIntakeAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/support/center-overview", SupportController.GetCenterOverviewAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanViewIncidents);
+            .AllowAnonymous();
 
         api.MapDelete("/support/incidents/{id:guid}", SupportController.DeleteIncidentAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanUpdateIncidents);
+            .AllowAnonymous();
 
         api.MapGet("/support/news", SupportNewsController.GetNewsAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         api.MapPost("/support/news", SupportNewsController.CreateNewsAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         api.MapPut("/support/news/{id:guid}", SupportNewsController.UpdateNewsAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         api.MapDelete("/support/news/{id:guid}", SupportNewsController.DeleteNewsAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         api.MapPatch("/support/news/{id:guid}/status", SupportNewsController.UpdateNewsStatusAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         api.MapPatch("/support/news/{id:guid}/featured", SupportNewsController.UpdateNewsFeaturedAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
+            .AllowAnonymous();
 
         return app;
     }

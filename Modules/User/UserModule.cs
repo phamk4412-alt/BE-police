@@ -12,24 +12,24 @@ public static class UserModule
         var api = app.MapGroup("/api");
 
         api.MapPost("/incidents/analyze", UserController.AnalyzeIncidentAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
+            .AllowAnonymous();
 
         api.MapPost("/incidents", UserController.CreateIncidentAsync)
             .Accepts<CreateIncidentRequest>("multipart/form-data")
             .DisableAntiforgery()
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
+            .AllowAnonymous();
 
         api.MapGet("/incidents/{id:guid}", UserController.GetIncidentByIdAsync)
-            .RequireAuthorization(AuthorizationPolicies.CanTrackIncident);
+            .AllowAnonymous();
 
         api.MapGet("/user/report-history", UserController.GetReportHistoryAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
+            .AllowAnonymous();
 
         api.MapGet("/user/nearby-alerts", UserController.GetNearbyAlertsAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
+            .AllowAnonymous();
 
         api.MapPost("/user/location/resolve", UserController.ResolveLocationAsync)
-            .ApplyOptionalAuthorization(demoOpenAccess, AuthorizationPolicies.CanSubmitIncident);
+            .AllowAnonymous();
 
         return app;
     }

@@ -44,7 +44,8 @@ public static class PoliceController
         var actor = authService.GetActorSnapshot(context.User);
         var normalizedStatus = incidentService.NormalizeStatus(request.Status);
 
-        if (!incidentService.CanUpdateIncidentStatus(actor.Role, normalizedStatus))
+        if (context.User.Identity?.IsAuthenticated == true
+            && !incidentService.CanUpdateIncidentStatus(actor.Role, normalizedStatus))
         {
             await auditService.WriteAsync(
                 dbContext,
