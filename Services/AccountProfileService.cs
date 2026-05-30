@@ -22,7 +22,8 @@ public sealed class AccountProfileService
             item => item.ClerkUserId == clerkUserId,
             cancellationToken);
 
-        if (profile is null)
+        var isNewProfile = profile is null;
+        if (isNewProfile)
         {
             profile = new AccountProfileRecord
             {
@@ -33,9 +34,29 @@ public sealed class AccountProfileService
             dbContext.AccountProfiles.Add(profile);
         }
 
-        Apply(profile, request, now);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return ToResponse(profile);
+        Apply(profile!, request, now);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (isNewProfile)
+        {
+            dbContext.ChangeTracker.Clear();
+            profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
+                item => item.ClerkUserId == clerkUserId,
+                cancellationToken);
+
+            if (profile is null)
+            {
+                throw;
+            }
+
+            Apply(profile, request, DateTimeOffset.UtcNow);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return ToResponse(profile!);
     }
 
     public Task<AccountProfileResponse> SyncClerkAsync(
@@ -87,22 +108,22 @@ public sealed class AccountProfileService
     {
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
-            profile.Email = request.Email.Trim();
+            profile.Email = TrimToMaxLength(request.Email, 254);
         }
 
         if (!string.IsNullOrWhiteSpace(request.DisplayName))
         {
-            profile.DisplayName = request.DisplayName.Trim();
+            profile.DisplayName = TrimToMaxLength(request.DisplayName, 160);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Role))
         {
-            profile.Role = request.Role.Trim().ToLowerInvariant();
+            profile.Role = TrimToMaxLength(request.Role, 32).ToLowerInvariant();
         }
 
         if (!string.IsNullOrWhiteSpace(request.Status))
         {
-            profile.Status = request.Status.Trim().ToLowerInvariant();
+            profile.Status = TrimToMaxLength(request.Status, 32).ToLowerInvariant();
         }
 
         if (request.CccdVerified.HasValue)
@@ -117,12 +138,12 @@ public sealed class AccountProfileService
 
         if (!string.IsNullOrWhiteSpace(request.DiditSessionId))
         {
-            profile.DiditSessionId = request.DiditSessionId.Trim();
+            profile.DiditSessionId = TrimToMaxLength(request.DiditSessionId, 160);
         }
 
         if (!string.IsNullOrWhiteSpace(request.DiditStatus))
         {
-            profile.DiditStatus = request.DiditStatus.Trim();
+            profile.DiditStatus = TrimToMaxLength(request.DiditStatus, 64);
         }
 
         if (request.DiditApproved.HasValue)
@@ -135,6 +156,12 @@ public sealed class AccountProfileService
         }
 
         profile.UpdatedAt = now;
+    }
+
+    private static string TrimToMaxLength(string value, int maxLength)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
     private static AccountProfileResponse ToResponse(AccountProfileRecord profile)

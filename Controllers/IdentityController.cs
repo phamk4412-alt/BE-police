@@ -65,14 +65,21 @@ public static class IdentityController
 
             if (request.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
             {
-                await accountProfileService.SyncClerkAsync(
-                    dbContext,
-                    request.Clerk,
-                    identityVerificationSessionService.GetState(context),
-                    session.SessionId,
-                    "created",
-                    false,
-                    cancellationToken);
+                try
+                {
+                    await accountProfileService.SyncClerkAsync(
+                        dbContext,
+                        request.Clerk,
+                        identityVerificationSessionService.GetState(context),
+                        session.SessionId,
+                        "created",
+                        false,
+                        cancellationToken);
+                }
+                catch
+                {
+                    dbContext.ChangeTracker.Clear();
+                }
             }
 
             return Results.Ok(session);
@@ -105,14 +112,21 @@ public static class IdentityController
 
             if (request?.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
             {
-                await accountProfileService.SyncClerkAsync(
-                    dbContext,
-                    request.Clerk,
-                    identityVerificationSessionService.GetState(context),
-                    decision.SessionId,
-                    decision.Status,
-                    decision.IsApproved,
-                    cancellationToken);
+                try
+                {
+                    await accountProfileService.SyncClerkAsync(
+                        dbContext,
+                        request.Clerk,
+                        identityVerificationSessionService.GetState(context),
+                        decision.SessionId,
+                        decision.Status,
+                        decision.IsApproved,
+                        cancellationToken);
+                }
+                catch
+                {
+                    dbContext.ChangeTracker.Clear();
+                }
             }
 
             return Results.Ok(decision);

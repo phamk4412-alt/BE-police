@@ -167,6 +167,24 @@ END;
 IF COL_LENGTH(N'[AccountProfiles]', N'DiditSessionId') IS NULL
     ALTER TABLE [AccountProfiles] ADD [DiditSessionId] nvarchar(160) NULL;
 
+IF COL_LENGTH(N'[AccountProfiles]', N'Email') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [Email] nvarchar(254) NOT NULL CONSTRAINT [DF_AccountProfiles_Email] DEFAULT N'';
+
+IF COL_LENGTH(N'[AccountProfiles]', N'DisplayName') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [DisplayName] nvarchar(160) NOT NULL CONSTRAINT [DF_AccountProfiles_DisplayName] DEFAULT N'';
+
+IF COL_LENGTH(N'[AccountProfiles]', N'Role') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [Role] nvarchar(32) NOT NULL CONSTRAINT [DF_AccountProfiles_Role] DEFAULT N'user';
+
+IF COL_LENGTH(N'[AccountProfiles]', N'Status') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [Status] nvarchar(32) NOT NULL CONSTRAINT [DF_AccountProfiles_Status] DEFAULT N'active';
+
+IF COL_LENGTH(N'[AccountProfiles]', N'CccdVerified') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [CccdVerified] bit NOT NULL CONSTRAINT [DF_AccountProfiles_CccdVerified] DEFAULT CAST(0 AS bit);
+
+IF COL_LENGTH(N'[AccountProfiles]', N'FaceScanned') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [FaceScanned] bit NOT NULL CONSTRAINT [DF_AccountProfiles_FaceScanned] DEFAULT CAST(0 AS bit);
+
 IF COL_LENGTH(N'[AccountProfiles]', N'DiditStatus') IS NULL
     ALTER TABLE [AccountProfiles] ADD [DiditStatus] nvarchar(64) NULL;
 
@@ -175,6 +193,12 @@ IF COL_LENGTH(N'[AccountProfiles]', N'DiditApproved') IS NULL
 
 IF COL_LENGTH(N'[AccountProfiles]', N'DiditVerifiedAt') IS NULL
     ALTER TABLE [AccountProfiles] ADD [DiditVerifiedAt] datetimeoffset NULL;
+
+IF COL_LENGTH(N'[AccountProfiles]', N'CreatedAt') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [CreatedAt] datetimeoffset NOT NULL CONSTRAINT [DF_AccountProfiles_CreatedAt] DEFAULT SYSDATETIMEOFFSET();
+
+IF COL_LENGTH(N'[AccountProfiles]', N'UpdatedAt') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [UpdatedAt] datetimeoffset NOT NULL CONSTRAINT [DF_AccountProfiles_UpdatedAt] DEFAULT SYSDATETIMEOFFSET();
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AccountProfiles_ClerkUserId' AND object_id = OBJECT_ID(N'[AccountProfiles]'))
     CREATE UNIQUE INDEX [UX_AccountProfiles_ClerkUserId] ON [AccountProfiles] ([ClerkUserId]);
@@ -211,9 +235,17 @@ CREATE TABLE IF NOT EXISTS "AccountProfiles" (
 );
 
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditSessionId" character varying(160) NULL;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "Email" character varying(254) NOT NULL DEFAULT '';
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DisplayName" character varying(160) NOT NULL DEFAULT '';
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "Role" character varying(32) NOT NULL DEFAULT 'user';
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "Status" character varying(32) NOT NULL DEFAULT 'active';
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "CccdVerified" boolean NOT NULL DEFAULT false;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "FaceScanned" boolean NOT NULL DEFAULT false;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditStatus" character varying(64) NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditApproved" boolean NOT NULL DEFAULT false;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditVerifiedAt" timestamp with time zone NULL;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "UX_AccountProfiles_ClerkUserId" ON "AccountProfiles" ("ClerkUserId");
 CREATE INDEX IF NOT EXISTS "IX_AccountProfiles_Email" ON "AccountProfiles" ("Email");
