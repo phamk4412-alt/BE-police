@@ -36,7 +36,13 @@ public sealed class ClerkAdminService
                 ? data.EnumerateArray()
                 : Enumerable.Empty<JsonElement>();
 
-        return users.Select(MapUser).ToArray();
+        return users.Select(user => MapUser(user)).ToArray();
+    }
+
+    public async Task<ClerkAdminUserResponse> GetUserAsync(string userId, CancellationToken cancellationToken)
+    {
+        using var document = await SendAsync(HttpMethod.Get, $"users/{Uri.EscapeDataString(userId)}", null, cancellationToken);
+        return MapUser(document.RootElement, defaultMissingRole: false);
     }
 
     public async Task<ClerkAdminUserResponse> UpdateRoleAsync(
@@ -122,7 +128,7 @@ public sealed class ClerkAdminService
             : JsonDocument.Parse(content);
     }
 
-    private static ClerkAdminUserResponse MapUser(JsonElement user)
+    private static ClerkAdminUserResponse MapUser(JsonElement user, bool defaultMissingRole = true)
     {
         var id = GetString(user, "id") ?? string.Empty;
         var firstName = GetString(user, "first_name");
@@ -132,7 +138,7 @@ public sealed class ClerkAdminService
         var email = GetPrimaryEmail(user);
         var role = GetMetadataString(user, "public_metadata", "role")
             ?? GetMetadataString(user, "unsafe_metadata", "role")
-            ?? AppRoles.User;
+            ?? (defaultMissingRole ? AppRoles.User : string.Empty);
         var status = GetBool(user, "banned") == true || GetBool(user, "locked") == true
             ? "locked"
             : "active";
