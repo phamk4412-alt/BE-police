@@ -89,15 +89,33 @@ public static class IdentityController
     public static async Task<IResult> CompleteDiditSessionAsync(
         HttpContext context,
         string sessionId,
+        CompleteDiditSessionRequest? request,
+        IncidentDbContext dbContext,
         DiditVerificationService diditVerificationService,
+        IdentityVerificationSessionService identityVerificationSessionService,
+        AccountProfileService accountProfileService,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Results.Ok(await diditVerificationService.CompleteSessionAsync(
+            var decision = await diditVerificationService.CompleteSessionAsync(
                 context,
                 sessionId,
-                cancellationToken));
+                cancellationToken);
+
+            if (request?.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
+            {
+                await accountProfileService.SyncClerkAsync(
+                    dbContext,
+                    request.Clerk,
+                    identityVerificationSessionService.GetState(context),
+                    decision.SessionId,
+                    decision.Status,
+                    decision.IsApproved,
+                    cancellationToken);
+            }
+
+            return Results.Ok(decision);
         }
         catch (InvalidOperationException exception)
         {
