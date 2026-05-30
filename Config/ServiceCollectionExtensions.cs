@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using PoliceBackend.Database;
 using PoliceBackend.Services;
@@ -220,6 +221,9 @@ public static class ServiceCollectionExtensions
             var provider = DatabaseConfiguration.ResolveProvider(configuration);
             var sqlServerConnection = DatabaseConfiguration.ResolveConnectionString(configuration, "SqlServer");
             var postgresConnection = DatabaseConfiguration.ResolveConnectionString(configuration, "Postgres");
+
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
 
             switch (provider)
             {
