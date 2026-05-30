@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PoliceBackend.Database;
 using PoliceBackend.Models;
 using PoliceBackend.Services;
 
@@ -49,15 +50,32 @@ public static class IdentityController
     public static async Task<IResult> CreateDiditSessionAsync(
         HttpContext context,
         CreateDiditSessionRequest request,
+        IncidentDbContext dbContext,
         DiditVerificationService diditVerificationService,
+        IdentityVerificationSessionService identityVerificationSessionService,
+        AccountProfileService accountProfileService,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Results.Ok(await diditVerificationService.CreateSessionAsync(
+            var session = await diditVerificationService.CreateSessionAsync(
                 context,
                 request,
-                cancellationToken));
+                cancellationToken);
+
+            if (request.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
+            {
+                await accountProfileService.SyncClerkAsync(
+                    dbContext,
+                    request.Clerk,
+                    identityVerificationSessionService.GetState(context),
+                    session.SessionId,
+                    "created",
+                    false,
+                    cancellationToken);
+            }
+
+            return Results.Ok(session);
         }
         catch (InvalidOperationException exception)
         {

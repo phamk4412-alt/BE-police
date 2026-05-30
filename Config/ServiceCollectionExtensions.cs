@@ -259,6 +259,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<DiditVerificationService>();
         services.AddSingleton<IdentityVerificationSessionService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<AccountProfileService>();
         services.AddScoped<AuditService>();
         services.AddScoped<IncidentService>();
         services.AddScoped<MapDataService>();

@@ -77,12 +77,33 @@ public static class AdminController
     }
 
     public static async Task<IResult> GetClerkAccountsAsync(
+        IncidentDbContext dbContext,
         ClerkAdminService clerkAdminService,
+        AccountProfileService accountProfileService,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Results.Ok(await clerkAdminService.GetUsersAsync(cancellationToken));
+            var users = await clerkAdminService.GetUsersAsync(cancellationToken);
+            foreach (var user in users)
+            {
+                await accountProfileService.SyncAsync(
+                    dbContext,
+                    new AccountProfileSyncRequest(
+                        user.Id,
+                        user.Email,
+                        user.Name,
+                        user.Role,
+                        user.Status,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null),
+                    cancellationToken);
+            }
+
+            return Results.Ok(users);
         }
         catch (InvalidOperationException error)
         {
@@ -91,14 +112,32 @@ public static class AdminController
     }
 
     public static async Task<IResult> UpdateClerkAccountRoleAsync(
+        IncidentDbContext dbContext,
         ClerkAdminService clerkAdminService,
+        AccountProfileService accountProfileService,
         string userId,
         UpdateClerkUserRoleRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Results.Ok(await clerkAdminService.UpdateRoleAsync(userId, request.Role, cancellationToken));
+            var user = await clerkAdminService.UpdateRoleAsync(userId, request.Role, cancellationToken);
+            await accountProfileService.SyncAsync(
+                dbContext,
+                new AccountProfileSyncRequest(
+                    user.Id,
+                    user.Email,
+                    user.Name,
+                    user.Role,
+                    user.Status,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null),
+                cancellationToken);
+
+            return Results.Ok(user);
         }
         catch (ArgumentException error)
         {
@@ -111,14 +150,32 @@ public static class AdminController
     }
 
     public static async Task<IResult> UpdateClerkAccountStatusAsync(
+        IncidentDbContext dbContext,
         ClerkAdminService clerkAdminService,
+        AccountProfileService accountProfileService,
         string userId,
         UpdateClerkUserStatusRequest request,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Results.Ok(await clerkAdminService.UpdateStatusAsync(userId, request.Status, cancellationToken));
+            var user = await clerkAdminService.UpdateStatusAsync(userId, request.Status, cancellationToken);
+            await accountProfileService.SyncAsync(
+                dbContext,
+                new AccountProfileSyncRequest(
+                    user.Id,
+                    user.Email,
+                    user.Name,
+                    user.Role,
+                    user.Status,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null),
+                cancellationToken);
+
+            return Results.Ok(user);
         }
         catch (ArgumentException error)
         {

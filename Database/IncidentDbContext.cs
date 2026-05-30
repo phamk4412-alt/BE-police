@@ -8,6 +8,7 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
     public DbSet<IncidentRecord> Incidents => Set<IncidentRecord>();
     public DbSet<AuditLogRecord> AuditLogs => Set<AuditLogRecord>();
     public DbSet<NewsRecord> News => Set<NewsRecord>();
+    public DbSet<AccountProfileRecord> AccountProfiles => Set<AccountProfileRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -159,6 +160,41 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         news.HasIndex(item => item.IsFeatured);
         news.HasIndex(item => item.FeaturedOrder);
         news.HasIndex(item => item.Category);
+
+        var accountProfile = modelBuilder.Entity<AccountProfileRecord>();
+        accountProfile.ToTable("AccountProfiles");
+        accountProfile.HasKey(item => item.Id);
+
+        accountProfile.Property(item => item.ClerkUserId)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        accountProfile.Property(item => item.Email)
+            .HasMaxLength(254)
+            .IsRequired();
+
+        accountProfile.Property(item => item.DisplayName)
+            .HasMaxLength(160)
+            .IsRequired();
+
+        accountProfile.Property(item => item.Role)
+            .HasMaxLength(32)
+            .IsRequired();
+
+        accountProfile.Property(item => item.Status)
+            .HasMaxLength(32)
+            .IsRequired();
+
+        accountProfile.Property(item => item.DiditSessionId)
+            .HasMaxLength(160);
+
+        accountProfile.Property(item => item.DiditStatus)
+            .HasMaxLength(64);
+
+        accountProfile.HasIndex(item => item.ClerkUserId).IsUnique();
+        accountProfile.HasIndex(item => item.Email);
+        accountProfile.HasIndex(item => item.Role);
+        accountProfile.HasIndex(item => item.DiditApproved);
 
     }
 }

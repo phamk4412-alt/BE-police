@@ -21,7 +21,8 @@ public sealed record UpdateFaceVerificationRequest(
 
 public sealed record CreateDiditSessionRequest(
     string CallbackUrl,
-    string? CallbackMethod = null);
+    string? CallbackMethod = null,
+    ClerkAccountSnapshot? Clerk = null);
 
 public sealed record DiditSessionResponse(
     string SessionId,
