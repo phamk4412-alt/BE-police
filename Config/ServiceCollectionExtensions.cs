@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PoliceBackend.Database;
 using PoliceBackend.Services;
 using PoliceBackend.Utils;
+using System.Security.Claims;
 
 namespace PoliceBackend.Config;
 
@@ -42,8 +46,26 @@ public static class ServiceCollectionExtensions
                     .AllowCredentials());
         });
 
+        var clerkAuthority =
+            configuration["CLERK_AUTHORITY"] ??
+            configuration["Clerk:Authority"];
+
         services
-            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = "PoliceSmartHub.AuthSelector";
+                options.DefaultChallengeScheme = "PoliceSmartHub.AuthSelector";
+            })
+            .AddPolicyScheme("PoliceSmartHub.AuthSelector", "Cookie or Clerk bearer", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                {
+                    var authorization = context.Request.Headers.Authorization.ToString();
+                    return authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                        ? JwtBearerDefaults.AuthenticationScheme
+                        : CookieAuthenticationDefaults.AuthenticationScheme;
+                };
+            })
             .AddCookie(options =>
             {
                 options.Cookie.Name = "PoliceSmartHub.Auth";
@@ -58,12 +80,119 @@ public static class ServiceCollectionExtensions
                 options.ExpireTimeSpan = TimeSpan.FromHours(8);
                 options.Events = new CookieAuthenticationEvents
                 {
-                    OnRedirectToLogin = context => AuthRedirectUtils.HandleRedirectAsync(
-                        context,
-                        StatusCodes.Status401Unauthorized),
-                    OnRedirectToAccessDenied = context => AuthRedirectUtils.HandleRedirectAsync(
-                        context,
-                        StatusCodes.Status403Forbidden)
+                    OnRedirectToLogin = context =>
+                    {
+                        LogAuthDebug(
+                            context.HttpContext,
+                            "Cookie auth rejected request with 401: missing or expired PoliceSmartHub.Auth cookie.");
+                        return AuthRedirectUtils.HandleRedirectAsync(
+                            context,
+                            StatusCodes.Status401Unauthorized);
+                    },
+                    OnRedirectToAccessDenied = context =>
+                    {
+                        LogAuthDebug(
+                            context.HttpContext,
+                            "Cookie auth rejected request with 403: authenticated user does not satisfy required policy.");
+                        return AuthRedirectUtils.HandleRedirectAsync(
+                            context,
+                            StatusCodes.Status403Forbidden);
+                    }
+                };
+            })
+            .AddJwtBearer(options =>
+            {
+                if (!string.IsNullOrWhiteSpace(clerkAuthority))
+                {
+                    options.Authority = clerkAuthority;
+                }
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    NameClaimType = ClaimTypes.Name,
+                    RoleClaimType = ClaimTypes.Role,
+                    ValidateAudience = false,
+                    ValidateIssuer = !string.IsNullOrWhiteSpace(clerkAuthority)
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        LogAuthDebug(
+                            context.HttpContext,
+                            $"Bearer auth selected: hasBearerHeader={context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)}.");
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var logger = GetAuthDebugLogger(context.HttpContext);
+                        var subject = context.Principal?.FindFirstValue("sub");
+
+                        if (string.IsNullOrWhiteSpace(subject))
+                        {
+                            logger.LogWarning("Clerk token validated but no subject claim was present.");
+                            context.Fail("Clerk token missing sub claim.");
+                            return;
+                        }
+
+                        try
+                        {
+                            var clerkAdminService = context.HttpContext.RequestServices.GetRequiredService<ClerkAdminService>();
+                            var clerkUser = await clerkAdminService.GetUserAsync(subject, context.HttpContext.RequestAborted);
+                            var role = NormalizeRole(clerkUser.Role);
+
+                            if (role is null)
+                            {
+                                logger.LogWarning(
+                                    "Clerk user {Subject} has invalid role metadata value {Role}.",
+                                    subject,
+                                    clerkUser.Role);
+                                context.Fail("Clerk user role metadata is missing or invalid.");
+                                return;
+                            }
+
+                            if (context.Principal?.Identity is ClaimsIdentity identity)
+                            {
+                                identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, clerkUser.Id));
+                                identity.AddClaim(new Claim(ClaimTypes.Name, clerkUser.Name));
+                                identity.AddClaim(new Claim(ClaimTypes.Email, clerkUser.Email));
+                                identity.AddClaim(new Claim(ClaimTypes.Role, role));
+                            }
+
+                            logger.LogInformation(
+                                "Clerk auth success: subject={Subject}, name={Name}, role={Role}.",
+                                subject,
+                                clerkUser.Name,
+                                role);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Clerk auth failed while loading user metadata for subject {Subject}.", subject);
+                            context.Fail("Cannot load Clerk user metadata.");
+                        }
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        GetAuthDebugLogger(context.HttpContext).LogWarning(
+                            context.Exception,
+                            "Bearer auth failed before authorization.");
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = context =>
+                    {
+                        LogAuthDebug(
+                            context.HttpContext,
+                            $"Bearer auth rejected request with 401: error={context.Error}, description={context.ErrorDescription}.");
+                        return Task.CompletedTask;
+                    },
+                    OnForbidden = context =>
+                    {
+                        LogAuthDebug(
+                            context.HttpContext,
+                            "Bearer auth rejected request with 403: authenticated user does not satisfy required policy.");
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
@@ -136,5 +265,36 @@ public static class ServiceCollectionExtensions
         services.AddScoped<NewsService>();
 
         return services;
+    }
+
+    private static ILogger GetAuthDebugLogger(HttpContext context) =>
+        context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("PoliceBackend.AuthDebug");
+
+    private static void LogAuthDebug(HttpContext context, string message)
+    {
+        var user = context.User;
+        GetAuthDebugLogger(context).LogInformation(
+            "{Message} path={Path}, method={Method}, isAuthenticated={IsAuthenticated}, authType={AuthType}, user={User}, role={Role}, hasAuthorizationHeader={HasAuthorizationHeader}, hasBackendCookie={HasBackendCookie}.",
+            message,
+            context.Request.Path,
+            context.Request.Method,
+            user.Identity?.IsAuthenticated == true,
+            user.Identity?.AuthenticationType ?? "(none)",
+            user.Identity?.Name ?? "(none)",
+            user.FindFirstValue(ClaimTypes.Role) ?? "(none)",
+            context.Request.Headers.ContainsKey("Authorization"),
+            context.Request.Cookies.ContainsKey("PoliceSmartHub.Auth"));
+    }
+
+    private static string? NormalizeRole(string? role)
+    {
+        return role?.ToLowerInvariant() switch
+        {
+            "admin" => AppRoles.Admin,
+            "police" => AppRoles.Police,
+            "support" => AppRoles.Support,
+            "user" => AppRoles.User,
+            _ => null
+        };
     }
 }

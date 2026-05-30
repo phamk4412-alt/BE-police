@@ -25,6 +25,7 @@ app.UseStaticFiles();
 app.UseMiddleware<CorsPreflightMiddleware>();
 app.UseCors(CorsPolicyNames.OpenRealtime);
 app.UseAuthentication();
+app.UseMiddleware<AuthDebugMiddleware>();
 app.UseAuthorization();
 
 app.MapSharedRoutes();
