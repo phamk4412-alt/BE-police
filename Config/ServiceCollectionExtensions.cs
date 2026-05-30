@@ -260,7 +260,10 @@ public static class ServiceCollectionExtensions
         {
             client.BaseAddress = new Uri("https://api.clerk.com/v1/");
         });
-        services.AddHttpClient<DiditVerificationService>();
+        services.AddHttpClient<DiditVerificationService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
         services.AddSingleton<IdentityVerificationSessionService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AccountProfileService>();
