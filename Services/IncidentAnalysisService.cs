@@ -120,6 +120,8 @@ public sealed class IncidentAnalysisService
             "da tiep nhan" => IncidentStatuses.DaTiepNhan,
             "dang xac minh" => IncidentStatuses.DangXacMinh,
             "da dieu phoi" => IncidentStatuses.DaDieuPhoi,
+            "completed" => IncidentStatuses.DaXuLy,
+            "resolved" => IncidentStatuses.DaXuLy,
             "da xu ly" => IncidentStatuses.DaXuLy,
             _ => string.IsNullOrWhiteSpace(status) ? IncidentStatuses.MoiTiepNhan : status.Trim()
         };
@@ -132,7 +134,13 @@ public sealed class IncidentAnalysisService
             return true;
         }
 
-        if (string.Equals(role, AppRoles.Police, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(role, "Anonymous", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(role, AppRoles.Police, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, AppRoles.Support, StringComparison.OrdinalIgnoreCase))
         {
             return status is IncidentStatuses.DaTiepNhan
                 or IncidentStatuses.DangXacMinh
