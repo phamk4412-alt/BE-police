@@ -44,9 +44,6 @@ BEGIN
         [Title] nvarchar(160) NOT NULL,
         [Detail] nvarchar(4000) NOT NULL,
         [Category] nvarchar(120) NOT NULL,
-        [Level] nvarchar(24) NOT NULL,
-        [UrgencyScore] int NOT NULL,
-        [ClassificationReason] nvarchar(500) NOT NULL,
         [Latitude] float NOT NULL,
         [Longitude] float NOT NULL,
         [District] nvarchar(80) NOT NULL,
@@ -56,7 +53,6 @@ BEGIN
         [ReporterName] nvarchar(120) NOT NULL,
         [ReporterPhone] nvarchar(64) NOT NULL,
         [LastUpdatedBy] nvarchar(120) NOT NULL,
-        [InternalNote] nvarchar(2000) NOT NULL,
         [ImageUrls] nvarchar(max) NOT NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         [UpdatedAt] datetimeoffset NOT NULL,
@@ -76,14 +72,26 @@ BEGIN
     ADD [ReporterPhone] nvarchar(64) NOT NULL CONSTRAINT [DF_Incidents_ReporterPhone] DEFAULT N'';
 END;
 
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Level' AND object_id = OBJECT_ID(N'[Incidents]'))
+    DROP INDEX [IX_Incidents_Level] ON [Incidents];
+
+IF COL_LENGTH(N'[Incidents]', N'Level') IS NOT NULL
+    ALTER TABLE [Incidents] DROP COLUMN [Level];
+
+IF COL_LENGTH(N'[Incidents]', N'UrgencyScore') IS NOT NULL
+    ALTER TABLE [Incidents] DROP COLUMN [UrgencyScore];
+
+IF COL_LENGTH(N'[Incidents]', N'ClassificationReason') IS NOT NULL
+    ALTER TABLE [Incidents] DROP COLUMN [ClassificationReason];
+
+IF COL_LENGTH(N'[Incidents]', N'InternalNote') IS NOT NULL
+    ALTER TABLE [Incidents] DROP COLUMN [InternalNote];
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_CreatedAt' AND object_id = OBJECT_ID(N'[Incidents]'))
     CREATE INDEX [IX_Incidents_CreatedAt] ON [Incidents] ([CreatedAt]);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Status' AND object_id = OBJECT_ID(N'[Incidents]'))
     CREATE INDEX [IX_Incidents_Status] ON [Incidents] ([Status]);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Level' AND object_id = OBJECT_ID(N'[Incidents]'))
-    CREATE INDEX [IX_Incidents_Level] ON [Incidents] ([Level]);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_District' AND object_id = OBJECT_ID(N'[Incidents]'))
     CREATE INDEX [IX_Incidents_District] ON [Incidents] ([District]);
@@ -97,9 +105,6 @@ CREATE TABLE IF NOT EXISTS "Incidents" (
     "Title" character varying(160) NOT NULL,
     "Detail" character varying(4000) NOT NULL,
     "Category" character varying(120) NOT NULL,
-    "Level" character varying(24) NOT NULL,
-    "UrgencyScore" integer NOT NULL,
-    "ClassificationReason" character varying(500) NOT NULL,
     "Latitude" double precision NOT NULL,
     "Longitude" double precision NOT NULL,
     "District" character varying(80) NOT NULL,
@@ -109,7 +114,6 @@ CREATE TABLE IF NOT EXISTS "Incidents" (
     "ReporterName" character varying(120) NOT NULL,
     "ReporterPhone" character varying(64) NOT NULL,
     "LastUpdatedBy" character varying(120) NOT NULL,
-    "InternalNote" character varying(2000) NOT NULL,
     "ImageUrls" text NOT NULL,
     "CreatedAt" timestamp with time zone NOT NULL,
     "UpdatedAt" timestamp with time zone NOT NULL,
@@ -122,9 +126,15 @@ ADD COLUMN IF NOT EXISTS "ImageUrls" text NOT NULL DEFAULT '';
 ALTER TABLE "Incidents"
 ADD COLUMN IF NOT EXISTS "ReporterPhone" character varying(64) NOT NULL DEFAULT '';
 
+DROP INDEX IF EXISTS "IX_Incidents_Level";
+
+ALTER TABLE "Incidents" DROP COLUMN IF EXISTS "Level";
+ALTER TABLE "Incidents" DROP COLUMN IF EXISTS "UrgencyScore";
+ALTER TABLE "Incidents" DROP COLUMN IF EXISTS "ClassificationReason";
+ALTER TABLE "Incidents" DROP COLUMN IF EXISTS "InternalNote";
+
 CREATE INDEX IF NOT EXISTS "IX_Incidents_CreatedAt" ON "Incidents" ("CreatedAt");
 CREATE INDEX IF NOT EXISTS "IX_Incidents_Status" ON "Incidents" ("Status");
-CREATE INDEX IF NOT EXISTS "IX_Incidents_Level" ON "Incidents" ("Level");
 CREATE INDEX IF NOT EXISTS "IX_Incidents_District" ON "Incidents" ("District");
 """);
                 break;

@@ -225,6 +225,12 @@ public static class ServiceCollectionExtensions
             options.ConfigureWarnings(warnings =>
                 warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
 
+            if (!environment.IsDevelopment() && provider == DatabaseProviders.InMemory)
+            {
+                throw new InvalidOperationException(
+                    "Production khong duoc dung in-memory database. Cau hinh POLICE_DATABASE_PROVIDER=sqlserver va POLICE_SQLSERVER_CONNECTION de ket noi DB that.");
+            }
+
             switch (provider)
             {
                 case DatabaseProviders.SqlServer:

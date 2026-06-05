@@ -37,7 +37,6 @@ public static class AdminController
         AuthService authService,
         string? search,
         string? status,
-        string? level,
         string? source,
         string? district,
         DateTimeOffset? from,
@@ -47,7 +46,7 @@ public static class AdminController
     {
         var incidents = await incidentService.GetIncidentsAsync(
             dbContext,
-            new(search, status, level, source, district, from, to, sort),
+            new(search, status, source, district, from, to, sort),
             cancellationToken);
 
         var actor = authService.GetActorSnapshot(context.User);

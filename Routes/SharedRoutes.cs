@@ -24,10 +24,6 @@ public static class SharedRoutes
         app.MapGet("/api/maps/geojson/{fileName}", SystemController.GetGeoJson);
         app.MapGet("/data/maps/{fileName}", SystemController.GetGeoJson);
         app.MapGet("/hcm-boundary.geojson", SystemController.GetBoundaryGeoJson);
-        app.MapGet("/api/news", NewsController.GetNewsAsync);
-        app.MapGet("/api/news/featured", NewsController.GetFeaturedAsync);
-        app.MapGet("/api/news/{id:guid}", NewsController.GetNewsByIdAsync);
-
         return app;
     }
 }

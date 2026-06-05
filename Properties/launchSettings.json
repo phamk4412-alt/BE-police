@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "PoliceBackend": {
+      "commandName": "Project",
+      "applicationUrl": "http://localhost:5055",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "POLICE_DATABASE_PROVIDER": "sqlserver",
+        "POLICE_SQLSERVER_SERVER": "161.248.147.174,10001",
+        "POLICE_SQLSERVER_DATABASE": "police",
+        "POLICE_SQLSERVER_USER": "sa"
+      }
+    }
+  }
+}

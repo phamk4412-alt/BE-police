@@ -11,7 +11,7 @@ public static class ModelMappingExtensions
         news.Category,
         news.IsFeatured,
         news.FeaturedOrder,
-        news.Status,
+        news.Status.ToLowerInvariant(),
         news.PublishedAt,
         news.CreatedAt,
         news.UpdatedAt,
@@ -23,9 +23,6 @@ public static class ModelMappingExtensions
         incident.Title,
         incident.Detail,
         incident.Category,
-        incident.Level,
-        incident.UrgencyScore,
-        incident.ClassificationReason,
         incident.Latitude,
         incident.Longitude,
         incident.District,
@@ -35,7 +32,6 @@ public static class ModelMappingExtensions
         incident.ReporterName,
         incident.ReporterPhone,
         incident.LastUpdatedBy,
-        incident.InternalNote,
         incident.ImageUrls
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         incident.CreatedAt,
@@ -48,7 +44,6 @@ public static class ModelMappingExtensions
         incident.Category,
         incident.Latitude,
         incident.Longitude,
-        incident.Level,
         ToSupportStatus(incident.Status),
         incident.ReporterName,
         incident.ReporterPhone,
@@ -58,11 +53,7 @@ public static class ModelMappingExtensions
 
     public static IncidentAnalysisResponse ToResponse(this IncidentAssessment assessment) => new(
         assessment.Category,
-        assessment.Level,
-        assessment.UrgencyScore,
-        assessment.Reason,
-        assessment.ShouldCallEmergency,
-        assessment.Recommendation);
+        assessment.ShouldCallEmergency);
 
     public static AuditLogResponse ToResponse(this AuditLogRecord auditLog) => new(
         auditLog.Id,

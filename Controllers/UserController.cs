@@ -19,7 +19,7 @@ public static class UserController
         AuthService authService,
         CancellationToken cancellationToken)
     {
-        var assessment = incidentService.AnalyzeAssessment(request.Title, request.Detail, request.Level);
+        var assessment = incidentService.AnalyzeAssessment(request.Title, request.Detail);
         var actor = authService.GetActorSnapshot(context.User);
 
         await auditService.WriteAsync(
@@ -28,8 +28,8 @@ public static class UserController
             action: AuditActions.AnalyzeIncident,
             entityType: AuditEntities.Incident,
             entityId: "preview",
-            summary: "Phan tich muc do khan cap.",
-            detail: $"He thong phan tich yeu cau preview va danh gia {assessment.Category} - {assessment.Level}.",
+            summary: "Phan tich loai vu viec.",
+            detail: $"He thong phan tich yeu cau preview va goi y loai {assessment.Category}.",
             actor: actor,
             cancellationToken: cancellationToken);
 
@@ -69,7 +69,7 @@ public static class UserController
             entityType: AuditEntities.Incident,
             entityId: incident!.Id.ToString(),
             summary: "Tao bao cao moi.",
-            detail: $"{actor.DisplayName} tao bao cao {incident.Title} voi muc {incident.Level} ({incident.Category}).",
+            detail: $"{actor.DisplayName} tao bao cao {incident.Title} ({incident.Category}).",
             actor: actor,
             saveChanges: false,
             cancellationToken: cancellationToken);
@@ -79,7 +79,7 @@ public static class UserController
 
         var response = new CreateIncidentResult(
             assessment!.ShouldCallEmergency
-                ? "Da gui bao cao thanh cong. He thong danh gia day la tinh huong khan cap cao."
+                ? "Da gui bao cao thanh cong. He thong khuyen nghi lien he 113 neu tinh huong dang dien ra."
                 : "Da gui bao cao thanh cong.",
             assessment.ToResponse(),
             incident.ToResponse());

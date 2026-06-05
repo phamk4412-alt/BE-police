@@ -12,14 +12,14 @@ namespace PoliceBackend.Services;
 
 public sealed class IncidentService(IncidentAnalysisService analysisService)
 {
-    public IncidentAnalysisResponse Analyze(string? title, string? detail, string? requestedLevel)
+    public IncidentAnalysisResponse Analyze(string? title, string? detail)
     {
-        return analysisService.Analyze(title, detail, requestedLevel).ToResponse();
+        return analysisService.Analyze(title, detail).ToResponse();
     }
 
-    public IncidentAssessment AnalyzeAssessment(string? title, string? detail, string? requestedLevel)
+    public IncidentAssessment AnalyzeAssessment(string? title, string? detail)
     {
-        return analysisService.Analyze(title, detail, requestedLevel);
+        return analysisService.Analyze(title, detail);
     }
 
     public async Task<IReadOnlyCollection<IncidentResponse>> GetIncidentsAsync(
@@ -29,7 +29,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
     {
         var incidents = await dbContext.Incidents
             .AsNoTracking()
-            .ApplyFilters(parameters, analysisService.NormalizeLevel, analysisService.NormalizeStatus)
+            .ApplyFilters(parameters, analysisService.NormalizeStatus)
             .ApplySort(parameters.Sort)
             .ToListAsync(cancellationToken);
 
@@ -41,14 +41,12 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
     public async Task<IReadOnlyCollection<SupportIncidentResponse>> GetSupportIncidentsAsync(
         IncidentDbContext dbContext,
         string? status,
-        string? level,
         CancellationToken cancellationToken = default)
     {
         var incidents = await dbContext.Incidents
             .AsNoTracking()
             .ApplyFilters(
-                new IncidentQueryParameters(null, status, level, null, null, null, null, "created_desc"),
-                analysisService.NormalizeLevel,
+                new IncidentQueryParameters(null, status, null, null, null, null, "created_desc"),
                 analysisService.NormalizeStatus)
             .ApplySort("created_desc")
             .ToListAsync(cancellationToken);
@@ -110,10 +108,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             return false;
         }
 
-        assessment = AnalyzeAssessment(
-            request.Title,
-            request.Detail,
-            string.IsNullOrWhiteSpace(request.Level) ? request.Category : request.Level);
+        assessment = AnalyzeAssessment(request.Title, request.Detail);
         var now = DateTimeOffset.UtcNow;
         var category = ResolveCategory(request, assessment);
 
@@ -123,21 +118,17 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             Title = request.Title.Trim(),
             Detail = request.Detail?.Trim() ?? string.Empty,
             Category = category,
-            Level = assessment.Level,
-            UrgencyScore = assessment.UrgencyScore,
-            ClassificationReason = assessment.Reason,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             District = GeoLocationUtils.ResolveDistrict(request.Latitude, request.Longitude),
             TimeLabel = DateTimeOffset.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
-            Status = assessment.UrgencyScore >= 85
+            Status = assessment.ShouldCallEmergency
                 ? IncidentStatuses.DangXacMinh
                 : IncidentStatuses.MoiTiepNhan,
             Source = "user",
             ReporterName = actor.DisplayName,
             ReporterPhone = actor.Username,
             LastUpdatedBy = actor.DisplayName,
-            InternalNote = assessment.Recommendation,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -245,11 +236,6 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         incident.LastUpdatedBy = actor.DisplayName;
         incident.UpdatedAt = DateTimeOffset.UtcNow;
 
-        if (!string.IsNullOrWhiteSpace(request.InternalNote))
-        {
-            incident.InternalNote = request.InternalNote.Trim();
-        }
-
         await dbContext.SaveChangesAsync(cancellationToken);
         var payload = incident.ToResponse();
         await hubContext.Clients.All.SendAsync("IncidentUpdated", payload, cancellationToken);
@@ -351,7 +337,6 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
                 item.Id,
                 item.Title,
                 item.Category,
-                item.Level,
                 item.Status,
                 item.District,
                 item.Latitude,
@@ -379,13 +364,10 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .Select(group => new HotspotResponse(
                 group.Key,
                 group.Count(),
-                group.Count(item => item.UrgencyScore >= 85),
-                Math.Round(group.Average(item => item.UrgencyScore), 1),
-                group.Count(item => item.UrgencyScore >= 85) > 0
-                    ? "Tang cuong tuan tra va uu tien xu ly nhom nguy co cao."
+                group.Any(item => item.Status == IncidentStatuses.MoiTiepNhan)
+                    ? "Tang cuong tiep nhan, xac minh cac bao cao moi."
                     : "Duy tri giam sat va bo tri don vi co dong khi can."))
-            .OrderByDescending(item => item.HighUrgencyCount)
-            .ThenByDescending(item => item.OpenIncidentCount)
+            .OrderByDescending(item => item.OpenIncidentCount)
             .Take(10)
             .ToArray();
     }
@@ -413,9 +395,9 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .Select((hotspot, index) => new PatrolVehicleResponse(
                 $"PX-{index + 1:00}",
                 hotspot.District,
-                hotspot.HighUrgencyCount > 0 ? "Dang co dong" : "Dang tuan tra",
+                hotspot.OpenIncidentCount > 0 ? "Dang co dong" : "Dang tuan tra",
                 hotspot.OpenIncidentCount,
-                (hotspot.HighUrgencyCount * 10) + (int)Math.Round(hotspot.AverageUrgencyScore),
+                hotspot.OpenIncidentCount * 10,
                 hotspot.RecommendedAction))
             .Take(5)
             .ToArray();
@@ -428,8 +410,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
         var incidents = await dbContext.Incidents
             .AsNoTracking()
             .Where(item => !string.Equals(item.Status, IncidentStatuses.DaXuLy, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(item => item.UrgencyScore)
-            .ThenByDescending(item => item.CreatedAt)
+            .OrderByDescending(item => item.CreatedAt)
             .Take(25)
             .ToListAsync(cancellationToken);
 
@@ -438,16 +419,12 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
                 item.Id,
                 item.Title,
                 item.Status,
-                item.Level,
-                item.UrgencyScore,
                 item.District,
                 item.ReporterName,
                 item.CreatedAt,
-                item.UrgencyScore >= 85
-                    ? "Dieu dong to co dong va xac minh hien truong ngay."
-                    : item.UrgencyScore >= 60
-                        ? "Lien he tong dai va bo tri can bo ho tro."
-                        : "Theo doi, bo sung thong tin va xep hang doi xu ly."))
+                item.Status == IncidentStatuses.MoiTiepNhan
+                    ? "Lien he nguoi bao cao va xac minh thong tin."
+                    : "Theo doi tien do xu ly va cap nhat trang thai."))
             .ToArray();
     }
 
@@ -462,7 +439,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             PendingCalls: dispatchBoard.Count(item => item.Status == IncidentStatuses.MoiTiepNhan),
             ActiveDispatches: dispatchBoard.Count(item =>
                 item.Status == IncidentStatuses.DangXacMinh || item.Status == IncidentStatuses.DaDieuPhoi),
-            HighPriorityIncidents: dispatchBoard.Count(item => item.UrgencyScore >= 85),
+            ActiveIncidentCount: dispatchBoard.Count,
             Hotspots: hotspots);
     }
 
@@ -482,12 +459,6 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             .OrderByDescending(item => item.Count)
             .ToArray();
 
-        var byLevel = incidents
-            .GroupBy(item => item.Level)
-            .Select(group => new MetricCountResponse(group.Key, group.Count()))
-            .OrderByDescending(item => item.Count)
-            .ToArray();
-
         var byDistrict = incidents
             .GroupBy(item => item.District)
             .Select(group => new MetricCountResponse(group.Key, group.Count()))
@@ -499,9 +470,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             TotalIncidents: incidents.Count,
             OpenIncidents: incidents.Count(item => !string.Equals(item.Status, IncidentStatuses.DaXuLy, StringComparison.OrdinalIgnoreCase)),
             ResolvedIncidents: incidents.Count(item => string.Equals(item.Status, IncidentStatuses.DaXuLy, StringComparison.OrdinalIgnoreCase)),
-            HighUrgencyIncidents: incidents.Count(item => item.UrgencyScore >= 85),
             ByStatus: byStatus,
-            ByLevel: byLevel,
             ByDistrict: byDistrict,
             AuditLogCount: auditLogCount);
     }

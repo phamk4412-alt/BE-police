@@ -6,7 +6,7 @@ namespace PoliceBackend.Services;
 
 public sealed class IncidentAnalysisService
 {
-    public IncidentAssessment Analyze(string? title, string? detail, string? requestedLevel)
+    public IncidentAssessment Analyze(string? title, string? detail)
     {
         var combined = $"{title} {detail}".Trim();
         var normalized = TextNormalizationUtils.RemoveDiacritics(combined).ToLowerInvariant();
@@ -32,18 +32,7 @@ public sealed class IncidentAnalysisService
             .FirstOrDefault(item => item.Matches.Length > 0);
 
         var score = bestProfile?.Profile.BaseScore ?? 38;
-        var reasons = new List<string>();
-
-        if (bestProfile is not null)
-        {
-            reasons.Add($"phat hien tu khoa: {string.Join(", ", bestProfile.Matches.Take(3))}");
-        }
-        else
-        {
-            reasons.Add("mo ta chua co tu khoa ro rang, can xac minh them");
-        }
-
-        var urgencyBoosters = new Dictionary<string, int>
+        var emergencySignals = new Dictionary<string, int>
         {
             ["ngay bay gio"] = 8,
             ["dang"] = 6,
@@ -56,57 +45,21 @@ public sealed class IncidentAnalysisService
             ["de doa"] = 10
         };
 
-        foreach (var booster in urgencyBoosters)
+        foreach (var signal in emergencySignals)
         {
-            if (normalized.Contains(booster.Key))
+            if (normalized.Contains(signal.Key))
             {
-                score += booster.Value;
-                reasons.Add($"co dau hieu tang muc khan: {booster.Key}");
+                score += signal.Value;
             }
         }
 
-        var requestedNormalized = NormalizeLevel(requestedLevel);
-        score = Math.Max(score, requestedNormalized switch
-        {
-            "high" => 82,
-            "medium" => 58,
-            _ => 35
-        });
-
         score = Math.Clamp(score, 15, 99);
-
-        var level = score >= 85 ? "high" : score >= 55 ? "medium" : "low";
         var shouldCallEmergency = score >= 88;
         var category = bestProfile?.Profile.Category ?? "Tinh huong can xac minh";
 
-        var recommendation = shouldCallEmergency
-            ? "Uu tien ket noi 113 ngay, dong thoi bo sung vi tri va dau hieu nhan dang."
-            : level == "medium"
-                ? "Can xac minh them thong tin va theo doi phan hoi tu trung tam."
-                : "Luu vao hang doi, uu tien bo sung chi tiet de phan loai chinh xac hon.";
-
         return new IncidentAssessment(
             Category: category,
-            Level: level,
-            UrgencyScore: score,
-            Reason: string.Join("; ", reasons),
-            ShouldCallEmergency: shouldCallEmergency,
-            Recommendation: recommendation);
-    }
-
-    public string NormalizeLevel(string? level)
-    {
-        return level?.Trim().ToLowerInvariant() switch
-        {
-            "high" => "high",
-            "medium" => "medium",
-            "low" => "low",
-            "khancap" => "high",
-            "cao" => "high",
-            "trungbinh" => "medium",
-            "thap" => "low",
-            _ => "high"
-        };
+            ShouldCallEmergency: shouldCallEmergency);
     }
 
     public string NormalizeStatus(string? status)
