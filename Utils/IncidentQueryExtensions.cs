@@ -7,7 +7,6 @@ public static class IncidentQueryExtensions
     public static IQueryable<IncidentRecord> ApplyFilters(
         this IQueryable<IncidentRecord> query,
         IncidentQueryParameters parameters,
-        Func<string?, string> normalizeLevel,
         Func<string?, string> normalizeStatus)
     {
         if (!string.IsNullOrWhiteSpace(parameters.Search))
@@ -24,12 +23,6 @@ public static class IncidentQueryExtensions
         {
             var normalizedStatus = normalizeStatus(parameters.Status);
             query = query.Where(item => item.Status == normalizedStatus);
-        }
-
-        if (!string.IsNullOrWhiteSpace(parameters.Level))
-        {
-            var normalizedLevel = normalizeLevel(parameters.Level);
-            query = query.Where(item => item.Level == normalizedLevel);
         }
 
         if (!string.IsNullOrWhiteSpace(parameters.Source))
@@ -64,8 +57,6 @@ public static class IncidentQueryExtensions
             "created_asc" => query.OrderBy(item => item.CreatedAt),
             "updated_desc" => query.OrderByDescending(item => item.UpdatedAt),
             "updated_asc" => query.OrderBy(item => item.UpdatedAt),
-            "urgency_desc" => query.OrderByDescending(item => item.UrgencyScore).ThenByDescending(item => item.CreatedAt),
-            "urgency_asc" => query.OrderBy(item => item.UrgencyScore).ThenByDescending(item => item.CreatedAt),
             _ => query.OrderByDescending(item => item.CreatedAt)
         };
     }

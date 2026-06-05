@@ -20,7 +20,7 @@ public sealed class NewsService
     {
         var news = await dbContext.News
             .AsNoTracking()
-            .Where(item => item.Status == NewsStatuses.Published && item.IsFeatured && item.FeaturedOrder != null)
+            .Where(item => item.Status.ToLower() == NewsStatuses.Published && item.IsFeatured && item.FeaturedOrder != null)
             .OrderBy(item => item.FeaturedOrder)
             .ThenByDescending(item => item.PublishedAt ?? item.CreatedAt)
             .Take(4)
@@ -39,7 +39,7 @@ public sealed class NewsService
 
         var query = dbContext.News
             .AsNoTracking()
-            .Where(item => item.Status == NewsStatuses.Published);
+            .Where(item => item.Status.ToLower() == NewsStatuses.Published);
 
         if (!string.IsNullOrWhiteSpace(parameters.Category))
         {
@@ -72,7 +72,7 @@ public sealed class NewsService
     {
         var news = await dbContext.News
             .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id && item.Status == NewsStatuses.Published, cancellationToken);
+            .FirstOrDefaultAsync(item => item.Id == id && item.Status.ToLower() == NewsStatuses.Published, cancellationToken);
 
         return news?.ToResponse();
     }
@@ -97,7 +97,7 @@ public sealed class NewsService
         if (!string.IsNullOrWhiteSpace(status))
         {
             var normalizedStatus = NormalizeStatus(status);
-            query = query.Where(item => item.Status == normalizedStatus);
+            query = query.Where(item => item.Status.ToLower() == normalizedStatus);
         }
 
         query = query

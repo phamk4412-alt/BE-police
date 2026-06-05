@@ -14,7 +14,6 @@ public static class PoliceController
         IncidentService incidentService,
         string? search,
         string? status,
-        string? level,
         string? source,
         string? district,
         DateTimeOffset? from,
@@ -24,7 +23,7 @@ public static class PoliceController
     {
         var incidents = await incidentService.GetIncidentsAsync(
             dbContext,
-            new IncidentQueryParameters(search, status, level, source, district, from, to, sort),
+            new IncidentQueryParameters(search, status, source, district, from, to, sort),
             cancellationToken);
 
         return Results.Ok(incidents);

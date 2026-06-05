@@ -8,9 +8,6 @@ public sealed class IncidentRecord
     public string Title { get; set; } = string.Empty;
     public string Detail { get; set; } = string.Empty;
     public string Category { get; set; } = "Chua xac dinh";
-    public string Level { get; set; } = "high";
-    public int UrgencyScore { get; set; }
-    public string ClassificationReason { get; set; } = string.Empty;
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public string District { get; set; } = string.Empty;
@@ -20,7 +17,6 @@ public sealed class IncidentRecord
     public string ReporterName { get; set; } = string.Empty;
     public string ReporterPhone { get; set; } = string.Empty;
     public string LastUpdatedBy { get; set; } = string.Empty;
-    public string InternalNote { get; set; } = string.Empty;
     public string ImageUrls { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -32,20 +28,18 @@ public sealed class CreateIncidentRequest
     public string? Detail { get; set; }
     public string? Category { get; set; }
     public string? CustomCategory { get; set; }
-    public string? Level { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public List<IFormFile> Images { get; set; } = [];
 }
 
-public sealed record UpdateIncidentStatusRequest(string Status, string? InternalNote);
+public sealed record UpdateIncidentStatusRequest(string Status);
 
-public sealed record AnalyzeIncidentRequest(string? Title, string? Detail, string? Level);
+public sealed record AnalyzeIncidentRequest(string? Title, string? Detail);
 
 public sealed record IncidentQueryParameters(
     string? Search,
     string? Status,
-    string? Level,
     string? Source,
     string? District,
     DateTimeOffset? From,
@@ -57,9 +51,6 @@ public sealed record IncidentResponse(
     string Title,
     string Detail,
     string Category,
-    string Level,
-    int UrgencyScore,
-    string ClassificationReason,
     double Latitude,
     double Longitude,
     string District,
@@ -69,7 +60,6 @@ public sealed record IncidentResponse(
     string ReporterName,
     string ReporterPhone,
     string LastUpdatedBy,
-    string InternalNote,
     IReadOnlyCollection<string> ImageUrls,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
@@ -81,7 +71,6 @@ public sealed record SupportIncidentResponse(
     [property: JsonPropertyName("category")] string Category,
     [property: JsonPropertyName("latitude")] double Latitude,
     [property: JsonPropertyName("longitude")] double Longitude,
-    [property: JsonPropertyName("level")] string Level,
     [property: JsonPropertyName("status")] string Status,
     [property: JsonPropertyName("reporterName")] string ReporterName,
     [property: JsonPropertyName("phone")] string Phone,
@@ -93,19 +82,11 @@ public sealed record SupportIncidentStatusUpdateRequest(
 
 public sealed record IncidentAnalysisResponse(
     string Category,
-    string Level,
-    int UrgencyScore,
-    string Reason,
-    bool ShouldCallEmergency,
-    string Recommendation);
+    bool ShouldCallEmergency);
 
 public sealed record IncidentAssessment(
     string Category,
-    string Level,
-    int UrgencyScore,
-    string Reason,
-    bool ShouldCallEmergency,
-    string Recommendation);
+    bool ShouldCallEmergency);
 
 public sealed record IncidentProfile(
     string Label,
@@ -134,7 +115,6 @@ public sealed record NearbyAlertResponse(
     Guid Id,
     string Title,
     string Category,
-    string Level,
     string Status,
     string District,
     double Latitude,
@@ -145,8 +125,6 @@ public sealed record NearbyAlertResponse(
 public sealed record HotspotResponse(
     string District,
     int OpenIncidentCount,
-    int HighUrgencyCount,
-    double AverageUrgencyScore,
     string RecommendedAction);
 
 public sealed record PatrolVehicleResponse(
@@ -161,8 +139,6 @@ public sealed record DispatchQueueItemResponse(
     Guid IncidentId,
     string Title,
     string Status,
-    string Level,
-    int UrgencyScore,
     string District,
     string ReporterName,
     DateTimeOffset CreatedAt,
@@ -171,7 +147,7 @@ public sealed record DispatchQueueItemResponse(
 public sealed record SupportCenterOverviewResponse(
     int PendingCalls,
     int ActiveDispatches,
-    int HighPriorityIncidents,
+    int ActiveIncidentCount,
     IReadOnlyCollection<HotspotResponse> Hotspots);
 
 public sealed record MetricCountResponse(string Key, int Count);
@@ -180,9 +156,7 @@ public sealed record AdminStatisticsResponse(
     int TotalIncidents,
     int OpenIncidents,
     int ResolvedIncidents,
-    int HighUrgencyIncidents,
     IReadOnlyCollection<MetricCountResponse> ByStatus,
-    IReadOnlyCollection<MetricCountResponse> ByLevel,
     IReadOnlyCollection<MetricCountResponse> ByDistrict,
     int AuditLogCount);
 

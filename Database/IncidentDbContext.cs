@@ -28,14 +28,6 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
             .HasMaxLength(120)
             .IsRequired();
 
-        incident.Property(item => item.Level)
-            .HasMaxLength(24)
-            .IsRequired();
-
-        incident.Property(item => item.ClassificationReason)
-            .HasMaxLength(500)
-            .IsRequired();
-
         incident.Property(item => item.TimeLabel)
             .HasMaxLength(16)
             .IsRequired();
@@ -64,16 +56,11 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
             .HasMaxLength(120)
             .IsRequired();
 
-        incident.Property(item => item.InternalNote)
-            .HasMaxLength(2000)
-            .IsRequired();
-
         incident.Property(item => item.ImageUrls)
             .IsRequired();
 
         incident.HasIndex(item => item.CreatedAt);
         incident.HasIndex(item => item.Status);
-        incident.HasIndex(item => item.Level);
         incident.HasIndex(item => item.District);
 
         var auditLog = modelBuilder.Entity<AuditLogRecord>();

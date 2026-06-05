@@ -40,15 +40,12 @@ partial class IncidentDbContextModelSnapshot : ModelSnapshot
         {
             b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("uniqueidentifier");
             b.Property<string>("Category").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
-            b.Property<string>("ClassificationReason").IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
             b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
             b.Property<string>("Detail").IsRequired().HasMaxLength(4000).HasColumnType("nvarchar(4000)");
             b.Property<string>("District").IsRequired().HasMaxLength(80).HasColumnType("nvarchar(80)");
             b.Property<string>("ImageUrls").IsRequired().HasColumnType("nvarchar(max)");
-            b.Property<string>("InternalNote").IsRequired().HasMaxLength(2000).HasColumnType("nvarchar(2000)");
             b.Property<string>("LastUpdatedBy").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
             b.Property<double>("Latitude").HasColumnType("float");
-            b.Property<string>("Level").IsRequired().HasMaxLength(24).HasColumnType("nvarchar(24)");
             b.Property<double>("Longitude").HasColumnType("float");
             b.Property<string>("ReporterName").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
             b.Property<string>("ReporterPhone").IsRequired().HasMaxLength(64).HasColumnType("nvarchar(64)");
@@ -57,11 +54,9 @@ partial class IncidentDbContextModelSnapshot : ModelSnapshot
             b.Property<string>("TimeLabel").IsRequired().HasMaxLength(16).HasColumnType("nvarchar(16)");
             b.Property<string>("Title").IsRequired().HasMaxLength(160).HasColumnType("nvarchar(160)");
             b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("datetimeoffset");
-            b.Property<int>("UrgencyScore").HasColumnType("int");
             b.HasKey("Id");
             b.HasIndex("CreatedAt");
             b.HasIndex("District");
-            b.HasIndex("Level");
             b.HasIndex("Status");
             b.ToTable("Incidents");
         });

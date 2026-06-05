@@ -13,13 +13,11 @@ public static class SupportController
         IncidentDbContext dbContext,
         IncidentService incidentService,
         string? status,
-        string? level,
         CancellationToken cancellationToken)
     {
         var incidents = await incidentService.GetSupportIncidentsAsync(
             dbContext,
             status,
-            level,
             cancellationToken);
 
         return Results.Ok(incidents);
@@ -62,7 +60,7 @@ public static class SupportController
             dbContext,
             hubContext,
             id,
-            new UpdateIncidentStatusRequest(request.Status, null),
+            new UpdateIncidentStatusRequest(request.Status),
             actor,
             cancellationToken);
 
