@@ -48,45 +48,7 @@ ALTER TABLE "Incidents" DROP COLUMN IF EXISTS "InternalNote";
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        if (ActiveProvider != "Microsoft.EntityFrameworkCore.SqlServer")
-        {
-            return;
-        }
-
-        migrationBuilder.AddColumn<string>(
-            name: "Level",
-            table: "Incidents",
-            type: "nvarchar(24)",
-            maxLength: 24,
-            nullable: false,
-            defaultValue: "high");
-
-        migrationBuilder.AddColumn<int>(
-            name: "UrgencyScore",
-            table: "Incidents",
-            type: "int",
-            nullable: false,
-            defaultValue: 0);
-
-        migrationBuilder.AddColumn<string>(
-            name: "ClassificationReason",
-            table: "Incidents",
-            type: "nvarchar(500)",
-            maxLength: 500,
-            nullable: false,
-            defaultValue: "");
-
-        migrationBuilder.AddColumn<string>(
-            name: "InternalNote",
-            table: "Incidents",
-            type: "nvarchar(2000)",
-            maxLength: 2000,
-            nullable: false,
-            defaultValue: "");
-
-        migrationBuilder.CreateIndex(
-            name: "IX_Incidents_Level",
-            table: "Incidents",
-            column: "Level");
+        // Severity columns were intentionally removed from the product model.
+        // Rolling back this migration must not recreate discontinued data fields.
     }
 }
