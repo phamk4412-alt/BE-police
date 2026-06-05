@@ -4,13 +4,32 @@ public static class DatabaseConfiguration
 {
     public static string ResolveProvider(IConfiguration configuration)
     {
-        var configured = configuration["POLICE_DATABASE_PROVIDER"]
-            ?? configuration["DatabaseProvider"];
-
-        configured = configured?.Trim().ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(configured))
+        var envProvider = NormalizeProvider(configuration["POLICE_DATABASE_PROVIDER"]);
+        if (!string.IsNullOrWhiteSpace(envProvider))
         {
-            return configured;
+            return envProvider;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration["DATABASE_URL"]))
+        {
+            return DatabaseProviders.Postgres;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration["POLICE_POSTGRES_CONNECTION"]))
+        {
+            return DatabaseProviders.Postgres;
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration["POLICE_SQLSERVER_CONNECTION"]))
+        {
+            return DatabaseProviders.SqlServer;
+        }
+
+        var configuredProvider = NormalizeProvider(configuration["DatabaseProvider"]);
+        if (!string.IsNullOrWhiteSpace(configuredProvider) &&
+            configuredProvider != DatabaseProviders.InMemory)
+        {
+            return configuredProvider;
         }
 
         if (!string.IsNullOrWhiteSpace(ResolveConnectionString(configuration, "Postgres")))
@@ -34,6 +53,44 @@ public static class DatabaseConfiguration
             return envValue.Trim();
         }
 
+        if (name.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            var databaseUrl = configuration["DATABASE_URL"];
+            if (!string.IsNullOrWhiteSpace(databaseUrl))
+            {
+                return ConvertPostgresUrl(databaseUrl.Trim());
+            }
+        }
+
         return configuration.GetConnectionString(name);
     }
+
+    private static string? ConvertPostgresUrl(string databaseUrl)
+    {
+        if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out var uri) ||
+            !uri.Scheme.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            return databaseUrl;
+        }
+
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var username = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? string.Empty);
+        var password = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? string.Empty);
+        var database = uri.AbsolutePath.TrimStart('/');
+        var port = uri.IsDefaultPort ? 5432 : uri.Port;
+
+        return string.Join(';', new[]
+        {
+            $"Host={uri.Host}",
+            $"Port={port}",
+            $"Database={Uri.UnescapeDataString(database)}",
+            $"Username={username}",
+            $"Password={password}",
+            "SSL Mode=Require",
+            "Trust Server Certificate=true"
+        });
+    }
+
+    private static string? NormalizeProvider(string? provider) =>
+        provider?.Trim().ToLowerInvariant();
 }
