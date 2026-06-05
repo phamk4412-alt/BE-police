@@ -34,6 +34,20 @@ public static class DatabaseConfiguration
             return envValue.Trim();
         }
 
+        if (string.Equals(name, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var password = configuration["POLICE_SQLSERVER_PASSWORD"];
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                var server = configuration["POLICE_SQLSERVER_SERVER"] ?? "161.248.147.174,10001";
+                var database = configuration["POLICE_SQLSERVER_DATABASE"] ?? "police";
+                var username = configuration["POLICE_SQLSERVER_USER"] ?? "sa";
+
+                return
+                    $"Server={server.Trim()};Database={database.Trim()};User Id={username.Trim()};Password={password};TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=True";
+            }
+        }
+
         return configuration.GetConnectionString(name);
     }
 }
