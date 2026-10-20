@@ -2,6 +2,10 @@ namespace PoliceBackend.Models;
 
 public sealed record GoogleLoginRequest(string? Credential);
 
+public sealed record PasswordLoginRequest(string? Email, string? Password);
+
+public sealed record RegisterRequest(string? DisplayName, string? Email, string? Password);
+
 public sealed record CurrentUserResponse(
     string Id,
     string Email,

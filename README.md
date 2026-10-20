@@ -79,6 +79,8 @@ Hoac dung script:
 - Frontend lay ID token tu Google Identity Services va goi `POST /api/auth/google`.
 - Backend kiem tra token voi Google, tao/cap nhat dong trong bang `AccountProfiles` va tra ve token dang nhap rieng (JWT, han 7 ngay).
 - Frontend gui token trong header `Authorization: Bearer ...`. Vai tro va trang thai khoa duoc doc tu database moi request.
+- Dang ky bang email: `POST /api/auth/register` (`DisplayName`, `Email`, `Password` >= 8 ky tu). Dang nhap: `POST /api/auth/login`. Mat khau duoc bam bang `PasswordHasher` cua ASP.NET Core Identity.
+- Moi email chi co mot tai khoan. Neu email da dang ky bang mat khau, dang nhap Google cung email se vao dung tai khoan do.
 - Tai khoan moi mac dinh la `user`. Admin doi vai tro qua `PATCH /api/admin/accounts/{id}/role`.
 
 ## Ghi chu

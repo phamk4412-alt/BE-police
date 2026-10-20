@@ -7,6 +7,7 @@ public sealed class AccountProfileRecord
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    public string? PasswordHash { get; set; }
     public string Role { get; set; } = AccountRoles.User;
     public string Status { get; set; } = AccountStatuses.Active;
     public bool CccdVerified { get; set; }
