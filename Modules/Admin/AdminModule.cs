@@ -18,13 +18,17 @@ public static class AdminModule
         api.MapGet("/admin/statistics", AdminController.GetStatisticsAsync)
             .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
-        api.MapGet("/admin/clerk/accounts", AdminController.GetClerkAccountsAsync);
+        api.MapGet("/admin/accounts", AdminController.GetAccountsAsync)
+            .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
-        api.MapPatch("/admin/clerk/accounts/{userId}/role", AdminController.UpdateClerkAccountRoleAsync);
+        api.MapPatch("/admin/accounts/{userId:guid}/role", AdminController.UpdateAccountRoleAsync)
+            .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
-        api.MapPatch("/admin/clerk/accounts/{userId}/status", AdminController.UpdateClerkAccountStatusAsync);
+        api.MapPatch("/admin/accounts/{userId:guid}/status", AdminController.UpdateAccountStatusAsync)
+            .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
-        api.MapDelete("/admin/clerk/accounts/{userId}", AdminController.DeleteClerkAccountAsync);
+        api.MapDelete("/admin/accounts/{userId:guid}", AdminController.DeleteAccountAsync)
+            .RequireAuthorization(AuthorizationPolicies.AdminOnly);
 
         api.MapGet("/admin/system/health", AdminController.GetSystemHealth)
             .RequireAuthorization(AuthorizationPolicies.AdminOnly);

@@ -59,6 +59,9 @@ BACKEND/
    - `POLICE_DATABASE_PROVIDER`
    - `POLICE_SQLSERVER_CONNECTION`
    - `POLICE_POSTGRES_CONNECTION`
+   - `GOOGLE_CLIENT_ID`: OAuth Client ID (Web) tu Google Cloud Console, giong voi `VITE_GOOGLE_CLIENT_ID` o frontend.
+   - `AUTH_JWT_SECRET`: chuoi ngau nhien >= 32 ky tu de ky token dang nhap. Thieu bien nay thi moi lan restart se dang xuat tat ca.
+   - `POLICE_ADMIN_EMAILS`: danh sach email Google (cach nhau bang dau phay) tu dong duoc cap vai tro admin khi dang nhap.
 3. Chay:
 
 ```powershell
@@ -70,6 +73,13 @@ Hoac dung script:
 ```powershell
 .\start-server.ps1
 ```
+
+## Dang nhap
+
+- Frontend lay ID token tu Google Identity Services va goi `POST /api/auth/google`.
+- Backend kiem tra token voi Google, tao/cap nhat dong trong bang `AccountProfiles` va tra ve token dang nhap rieng (JWT, han 7 ngay).
+- Frontend gui token trong header `Authorization: Bearer ...`. Vai tro va trang thai khoa duoc doc tu database moi request.
+- Tai khoan moi mac dinh la `user`. Admin doi vai tro qua `PATCH /api/admin/accounts/{id}/role`.
 
 ## Ghi chu
 

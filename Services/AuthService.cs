@@ -1,29 +1,20 @@
 using System.Security.Claims;
 using PoliceBackend.Models;
-using PoliceBackend.Utils;
 
 namespace PoliceBackend.Services;
 
 public sealed class AuthService
 {
-    public AuthenticatedUserResponse? GetAuthenticatedUser(ClaimsPrincipal user)
+    public Guid? GetAccountId(ClaimsPrincipal user)
     {
         if (user.Identity?.IsAuthenticated != true)
         {
             return null;
         }
 
-        var role = user.FindFirstValue(ClaimTypes.Role);
-        if (string.IsNullOrWhiteSpace(role))
-        {
-            return null;
-        }
-
-        return new AuthenticatedUserResponse(
-            user.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-            user.Identity?.Name ?? string.Empty,
-            role,
-            AuthRedirectUtils.GetLandingPathForRole(role));
+        return Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var accountId)
+            ? accountId
+            : null;
     }
 
     public ActorSnapshot GetActorSnapshot(ClaimsPrincipal user)
@@ -34,8 +25,19 @@ public sealed class AuthService
         }
 
         return new ActorSnapshot(
-            user.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown",
-            user.Identity?.Name ?? "Unknown user",
+            Truncate(user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown", 120),
+            Truncate(user.Identity?.Name ?? "Unknown user", 160),
             user.FindFirstValue(ClaimTypes.Role) ?? "Unknown");
     }
+
+    public static ActorSnapshot GetActorSnapshot(AccountProfileRecord profile)
+    {
+        return new ActorSnapshot(
+            Truncate(profile.Email, 120),
+            Truncate(profile.DisplayName, 160),
+            profile.Role);
+    }
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 }

@@ -152,9 +152,14 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         accountProfile.ToTable("AccountProfiles");
         accountProfile.HasKey(item => item.Id);
 
-        accountProfile.Property(item => item.ClerkUserId)
+        // Column keeps its old name so existing databases need no rename; it now holds "google:<sub>".
+        accountProfile.Property(item => item.ExternalId)
+            .HasColumnName("ClerkUserId")
             .HasMaxLength(120)
             .IsRequired();
+
+        accountProfile.Property(item => item.AvatarUrl)
+            .HasMaxLength(512);
 
         accountProfile.Property(item => item.Email)
             .HasMaxLength(254)
@@ -178,7 +183,7 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         accountProfile.Property(item => item.DiditStatus)
             .HasMaxLength(64);
 
-        accountProfile.HasIndex(item => item.ClerkUserId).IsUnique();
+        accountProfile.HasIndex(item => item.ExternalId).IsUnique();
         accountProfile.HasIndex(item => item.Email);
         accountProfile.HasIndex(item => item.Role);
         accountProfile.HasIndex(item => item.DiditApproved);

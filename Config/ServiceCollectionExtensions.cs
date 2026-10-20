@@ -1,14 +1,12 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using PoliceBackend.Database;
+using PoliceBackend.Models;
 using PoliceBackend.Services;
-using PoliceBackend.Utils;
 using System.Security.Claims;
 
 namespace PoliceBackend.Config;
@@ -20,10 +18,6 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        var useCrossSiteCookies = configuration.GetValue(
-            "POLICE_CROSS_SITE_COOKIES",
-            !environment.IsDevelopment());
-
         services.Configure<JsonOptions>(options =>
         {
             options.SerializerOptions.PropertyNamingPolicy = null;
@@ -47,82 +41,37 @@ public static class ServiceCollectionExtensions
                     .AllowCredentials());
         });
 
-        var clerkAuthority =
-            configuration["CLERK_AUTHORITY"] ??
-            configuration["Clerk:Authority"];
+        var authSettings = new AuthSettings(configuration);
+        services.AddSingleton(authSettings);
 
         services
-            .AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = "PoliceSmartHub.AuthSelector";
-                options.DefaultChallengeScheme = "PoliceSmartHub.AuthSelector";
-            })
-            .AddPolicyScheme("PoliceSmartHub.AuthSelector", "Cookie or Clerk bearer", options =>
-            {
-                options.ForwardDefaultSelector = context =>
-                {
-                    var authorization = context.Request.Headers.Authorization.ToString();
-                    return authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-                        ? JwtBearerDefaults.AuthenticationScheme
-                        : CookieAuthenticationDefaults.AuthenticationScheme;
-                };
-            })
-            .AddCookie(options =>
-            {
-                options.Cookie.Name = "PoliceSmartHub.Auth";
-                options.Cookie.HttpOnly = true;
-                options.Cookie.SameSite = useCrossSiteCookies ? SameSiteMode.None : SameSiteMode.Lax;
-                options.Cookie.SecurePolicy = useCrossSiteCookies
-                    ? CookieSecurePolicy.Always
-                    : CookieSecurePolicy.SameAsRequest;
-                options.LoginPath = "/";
-                options.AccessDeniedPath = "/";
-                options.SlidingExpiration = true;
-                options.ExpireTimeSpan = TimeSpan.FromHours(8);
-                options.Events = new CookieAuthenticationEvents
-                {
-                    OnRedirectToLogin = context =>
-                    {
-                        LogAuthDebug(
-                            context.HttpContext,
-                            "Cookie auth rejected request with 401: missing or expired PoliceSmartHub.Auth cookie.");
-                        return AuthRedirectUtils.HandleRedirectAsync(
-                            context,
-                            StatusCodes.Status401Unauthorized);
-                    },
-                    OnRedirectToAccessDenied = context =>
-                    {
-                        LogAuthDebug(
-                            context.HttpContext,
-                            "Cookie auth rejected request with 403: authenticated user does not satisfy required policy.");
-                        return AuthRedirectUtils.HandleRedirectAsync(
-                            context,
-                            StatusCodes.Status403Forbidden);
-                    }
-                };
-            })
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                if (!string.IsNullOrWhiteSpace(clerkAuthority))
-                {
-                    options.Authority = clerkAuthority;
-                }
-
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     NameClaimType = ClaimTypes.Name,
                     RoleClaimType = ClaimTypes.Role,
-                    ValidateAudience = false,
-                    ValidateIssuer = !string.IsNullOrWhiteSpace(clerkAuthority)
+                    ValidIssuer = AuthSettings.TokenIssuer,
+                    ValidAudience = AuthSettings.TokenAudience,
+                    IssuerSigningKey = authSettings.SigningKey,
+                    ValidateIssuerSigningKey = true,
+                    ClockSkew = TimeSpan.FromMinutes(1)
                 };
 
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
                     {
-                        LogAuthDebug(
-                            context.HttpContext,
-                            $"Bearer auth selected: hasBearerHeader={context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)}.");
+                        // SignalR websockets cannot send headers, so the hub client passes the token in the query string.
+                        var accessToken = context.Request.Query["access_token"].ToString();
+                        if (!string.IsNullOrWhiteSpace(accessToken) &&
+                            context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+
                         return Task.CompletedTask;
                     },
                     OnTokenValidated = async context =>
@@ -130,55 +79,39 @@ public static class ServiceCollectionExtensions
                         var logger = GetAuthDebugLogger(context.HttpContext);
                         var subject = context.Principal?.FindFirstValue("sub");
 
-                        if (string.IsNullOrWhiteSpace(subject))
+                        if (!Guid.TryParse(subject, out var accountId))
                         {
-                            logger.LogWarning("Clerk token validated but no subject claim was present.");
-                            context.Fail("Clerk token missing sub claim.");
+                            context.Fail("Token missing account id.");
                             return;
                         }
 
-                        try
+                        // Role and status are read from the database on every request so admin changes apply immediately.
+                        var dbContext = context.HttpContext.RequestServices.GetRequiredService<IncidentDbContext>();
+                        var profile = await dbContext.AccountProfiles
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(item => item.Id == accountId, context.HttpContext.RequestAborted);
+
+                        if (profile is null || profile.Status != AccountStatuses.Active)
                         {
-                            var clerkAdminService = context.HttpContext.RequestServices.GetRequiredService<ClerkAdminService>();
-                            var clerkUser = await clerkAdminService.GetUserAsync(subject, context.HttpContext.RequestAborted);
-                            var role = NormalizeRole(clerkUser.Role);
-
-                            if (role is null)
-                            {
-                                logger.LogWarning(
-                                    "Clerk user {Subject} has invalid role metadata value {Role}.",
-                                    subject,
-                                    clerkUser.Role);
-                                context.Fail("Clerk user role metadata is missing or invalid.");
-                                return;
-                            }
-
-                            if (context.Principal?.Identity is ClaimsIdentity identity)
-                            {
-                                identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, clerkUser.Id));
-                                identity.AddClaim(new Claim(ClaimTypes.Name, clerkUser.Name));
-                                identity.AddClaim(new Claim(ClaimTypes.Email, clerkUser.Email));
-                                identity.AddClaim(new Claim(ClaimTypes.Role, role));
-                            }
-
-                            logger.LogInformation(
-                                "Clerk auth success: subject={Subject}, name={Name}, role={Role}.",
-                                subject,
-                                clerkUser.Name,
-                                role);
+                            logger.LogInformation("Rejected token for missing or locked account {AccountId}.", accountId);
+                            context.Fail("Account is missing or locked.");
+                            return;
                         }
-                        catch (Exception ex)
+
+                        var role = ToAppRole(profile.Role);
+                        if (role is null)
                         {
-                            logger.LogError(ex, "Clerk auth failed while loading user metadata for subject {Subject}.", subject);
-                            context.Fail("Cannot load Clerk user metadata.");
+                            context.Fail("Account role is invalid.");
+                            return;
                         }
-                    },
-                    OnAuthenticationFailed = context =>
-                    {
-                        GetAuthDebugLogger(context.HttpContext).LogWarning(
-                            context.Exception,
-                            "Bearer auth failed before authorization.");
-                        return Task.CompletedTask;
+
+                        if (context.Principal?.Identity is ClaimsIdentity identity)
+                        {
+                            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, profile.Id.ToString()));
+                            identity.AddClaim(new Claim(ClaimTypes.Name, profile.DisplayName));
+                            identity.AddClaim(new Claim(ClaimTypes.Email, profile.Email));
+                            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+                        }
                     },
                     OnChallenge = context =>
                     {
@@ -268,15 +201,13 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IncidentAnalysisService>();
         services.AddSingleton<PolicePresenceService>();
-        services.AddHttpClient<ClerkAdminService>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.clerk.com/v1/");
-        });
         services.AddHttpClient<DiditVerificationService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
         services.AddSingleton<IdentityVerificationSessionService>();
+        services.AddSingleton<GoogleAuthService>();
+        services.AddSingleton<AuthTokenService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AccountProfileService>();
         services.AddScoped<AuditService>();
@@ -294,7 +225,7 @@ public static class ServiceCollectionExtensions
     {
         var user = context.User;
         GetAuthDebugLogger(context).LogInformation(
-            "{Message} path={Path}, method={Method}, isAuthenticated={IsAuthenticated}, authType={AuthType}, user={User}, role={Role}, hasAuthorizationHeader={HasAuthorizationHeader}, hasBackendCookie={HasBackendCookie}.",
+            "{Message} path={Path}, method={Method}, isAuthenticated={IsAuthenticated}, authType={AuthType}, user={User}, role={Role}, hasAuthorizationHeader={HasAuthorizationHeader}.",
             message,
             context.Request.Path,
             context.Request.Method,
@@ -302,18 +233,17 @@ public static class ServiceCollectionExtensions
             user.Identity?.AuthenticationType ?? "(none)",
             user.Identity?.Name ?? "(none)",
             user.FindFirstValue(ClaimTypes.Role) ?? "(none)",
-            context.Request.Headers.ContainsKey("Authorization"),
-            context.Request.Cookies.ContainsKey("PoliceSmartHub.Auth"));
+            context.Request.Headers.ContainsKey("Authorization"));
     }
 
-    private static string? NormalizeRole(string? role)
+    private static string? ToAppRole(string? role)
     {
-        return role?.ToLowerInvariant() switch
+        return AccountRoles.Normalize(role) switch
         {
-            "admin" => AppRoles.Admin,
-            "police" => AppRoles.Police,
-            "support" => AppRoles.Support,
-            "user" => AppRoles.User,
+            AccountRoles.Admin => AppRoles.Admin,
+            AccountRoles.Police => AppRoles.Police,
+            AccountRoles.Support => AppRoles.Support,
+            AccountRoles.User => AppRoles.User,
             _ => null
         };
     }

@@ -75,131 +75,80 @@ public static class AdminController
         return Results.Ok(await incidentService.GetStatisticsAsync(dbContext, cancellationToken));
     }
 
-    public static async Task<IResult> GetClerkAccountsAsync(
+    public static async Task<IResult> GetAccountsAsync(
         IncidentDbContext dbContext,
-        ClerkAdminService clerkAdminService,
         AccountProfileService accountProfileService,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var users = await clerkAdminService.GetUsersAsync(cancellationToken);
-            foreach (var user in users)
-            {
-                await accountProfileService.SyncAsync(
-                    dbContext,
-                    new AccountProfileSyncRequest(
-                        user.Id,
-                        user.Email,
-                        user.Name,
-                        user.Role,
-                        user.Status,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null),
-                    cancellationToken);
-            }
-
-            return Results.Ok(users);
-        }
-        catch (InvalidOperationException error)
-        {
-            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
+        return Results.Ok(await accountProfileService.GetAdminAccountsAsync(dbContext, cancellationToken));
     }
 
-    public static async Task<IResult> UpdateClerkAccountRoleAsync(
+    public static async Task<IResult> UpdateAccountRoleAsync(
+        HttpContext context,
         IncidentDbContext dbContext,
-        ClerkAdminService clerkAdminService,
+        AuthService authService,
         AccountProfileService accountProfileService,
-        string userId,
-        UpdateClerkUserRoleRequest request,
+        Guid userId,
+        UpdateAccountRoleRequest request,
         CancellationToken cancellationToken)
     {
+        if (authService.GetAccountId(context.User) == userId)
+        {
+            return Results.BadRequest(new { message = "Khong the tu doi vai tro cua chinh minh." });
+        }
+
         try
         {
-            var user = await clerkAdminService.UpdateRoleAsync(userId, request.Role, cancellationToken);
-            await accountProfileService.SyncAsync(
-                dbContext,
-                new AccountProfileSyncRequest(
-                    user.Id,
-                    user.Email,
-                    user.Name,
-                    user.Role,
-                    user.Status,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null),
-                cancellationToken);
-
-            return Results.Ok(user);
+            var account = await accountProfileService.UpdateRoleAsync(dbContext, userId, request.Role, cancellationToken);
+            return account is null ? Results.NotFound() : Results.Ok(account);
         }
         catch (ArgumentException error)
         {
             return Results.BadRequest(new { message = error.Message });
         }
-        catch (InvalidOperationException error)
-        {
-            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
     }
 
-    public static async Task<IResult> UpdateClerkAccountStatusAsync(
+    public static async Task<IResult> UpdateAccountStatusAsync(
+        HttpContext context,
         IncidentDbContext dbContext,
-        ClerkAdminService clerkAdminService,
+        AuthService authService,
         AccountProfileService accountProfileService,
-        string userId,
-        UpdateClerkUserStatusRequest request,
+        Guid userId,
+        UpdateAccountStatusRequest request,
         CancellationToken cancellationToken)
     {
+        if (authService.GetAccountId(context.User) == userId)
+        {
+            return Results.BadRequest(new { message = "Khong the tu khoa tai khoan cua chinh minh." });
+        }
+
         try
         {
-            var user = await clerkAdminService.UpdateStatusAsync(userId, request.Status, cancellationToken);
-            await accountProfileService.SyncAsync(
-                dbContext,
-                new AccountProfileSyncRequest(
-                    user.Id,
-                    user.Email,
-                    user.Name,
-                    user.Role,
-                    user.Status,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null),
-                cancellationToken);
-
-            return Results.Ok(user);
+            var account = await accountProfileService.UpdateStatusAsync(dbContext, userId, request.Status, cancellationToken);
+            return account is null ? Results.NotFound() : Results.Ok(account);
         }
         catch (ArgumentException error)
         {
             return Results.BadRequest(new { message = error.Message });
         }
-        catch (InvalidOperationException error)
-        {
-            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
     }
 
-    public static async Task<IResult> DeleteClerkAccountAsync(
-        ClerkAdminService clerkAdminService,
-        string userId,
+    public static async Task<IResult> DeleteAccountAsync(
+        HttpContext context,
+        IncidentDbContext dbContext,
+        AuthService authService,
+        AccountProfileService accountProfileService,
+        Guid userId,
         CancellationToken cancellationToken)
     {
-        try
+        if (authService.GetAccountId(context.User) == userId)
         {
-            await clerkAdminService.DeleteUserAsync(userId, cancellationToken);
-            return Results.NoContent();
+            return Results.BadRequest(new { message = "Khong the tu xoa tai khoan cua chinh minh." });
         }
-        catch (InvalidOperationException error)
-        {
-            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status503ServiceUnavailable);
-        }
+
+        return await accountProfileService.DeleteAsync(dbContext, userId, cancellationToken)
+            ? Results.NoContent()
+            : Results.NotFound();
     }
 
     public static IResult GetSystemHealth(IConfiguration configuration)
