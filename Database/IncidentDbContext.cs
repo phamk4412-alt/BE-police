@@ -161,6 +161,9 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         accountProfile.Property(item => item.AvatarUrl)
             .HasMaxLength(512);
 
+        accountProfile.Property(item => item.PasswordHash)
+            .HasMaxLength(512);
+
         accountProfile.Property(item => item.Email)
             .HasMaxLength(254)
             .IsRequired();

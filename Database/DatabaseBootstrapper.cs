@@ -169,6 +169,7 @@ BEGIN
         [DiditApproved] bit NOT NULL,
         [DiditVerifiedAt] datetimeoffset NULL,
         [AvatarUrl] nvarchar(512) NULL,
+        [PasswordHash] nvarchar(512) NULL,
         [LastLoginAt] datetimeoffset NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         [UpdatedAt] datetimeoffset NOT NULL,
@@ -209,6 +210,9 @@ IF COL_LENGTH(N'[AccountProfiles]', N'DiditVerifiedAt') IS NULL
 IF COL_LENGTH(N'[AccountProfiles]', N'AvatarUrl') IS NULL
     ALTER TABLE [AccountProfiles] ADD [AvatarUrl] nvarchar(512) NULL;
 
+IF COL_LENGTH(N'[AccountProfiles]', N'PasswordHash') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [PasswordHash] nvarchar(512) NULL;
+
 IF COL_LENGTH(N'[AccountProfiles]', N'LastLoginAt') IS NULL
     ALTER TABLE [AccountProfiles] ADD [LastLoginAt] datetimeoffset NULL;
 
@@ -248,6 +252,7 @@ CREATE TABLE IF NOT EXISTS "AccountProfiles" (
     "DiditApproved" boolean NOT NULL,
     "DiditVerifiedAt" timestamp with time zone NULL,
     "AvatarUrl" character varying(512) NULL,
+    "PasswordHash" character varying(512) NULL,
     "LastLoginAt" timestamp with time zone NULL,
     "CreatedAt" timestamp with time zone NOT NULL,
     "UpdatedAt" timestamp with time zone NOT NULL,
@@ -265,6 +270,7 @@ ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditStatus" character v
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditApproved" boolean NOT NULL DEFAULT false;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditVerifiedAt" timestamp with time zone NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "AvatarUrl" character varying(512) NULL;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "PasswordHash" character varying(512) NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "LastLoginAt" timestamp with time zone NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;

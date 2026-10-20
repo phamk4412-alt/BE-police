@@ -26,6 +26,15 @@ public sealed class AccountProfileService
             item => item.ExternalId == externalId,
             cancellationToken);
 
+        // Google has verified the email, so it may sign in to a password account registered with the same address.
+        if (profile is null)
+        {
+            var localId = LocalExternalId(identity.Email);
+            profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
+                item => item.ExternalId == localId,
+                cancellationToken);
+        }
+
         var isNewProfile = profile is null;
         if (isNewProfile)
         {
@@ -65,6 +74,87 @@ public sealed class AccountProfileService
 
         return profile!;
     }
+
+    public Task<AccountProfileRecord?> FindLocalAsync(
+        IncidentDbContext dbContext,
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        var externalId = LocalExternalId(email);
+        return dbContext.AccountProfiles.FirstOrDefaultAsync(item => item.ExternalId == externalId, cancellationToken);
+    }
+
+    // Returns null when the email already belongs to an account (password or Google).
+    public async Task<AccountProfileRecord?> RegisterLocalAsync(
+        IncidentDbContext dbContext,
+        string displayName,
+        string email,
+        Func<AccountProfileRecord, string> hashPassword,
+        bool isBootstrapAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        var externalId = LocalExternalId(normalizedEmail);
+        var emailTaken = await QueryAccounts(dbContext).AnyAsync(
+            item => item.ExternalId == externalId || item.Email.ToLower() == normalizedEmail,
+            cancellationToken);
+
+        if (emailTaken)
+        {
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var profile = new AccountProfileRecord
+        {
+            Id = Guid.NewGuid(),
+            ExternalId = externalId,
+            Email = TrimToMaxLength(normalizedEmail, 254),
+            DisplayName = TrimToMaxLength(displayName, 160),
+            Role = isBootstrapAdmin ? AccountRoles.Admin : AccountRoles.User,
+            Status = AccountStatuses.Active,
+            LastLoginAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        profile.PasswordHash = hashPassword(profile);
+        dbContext.AccountProfiles.Add(profile);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Unique index on ExternalId: the same email registered concurrently.
+            dbContext.ChangeTracker.Clear();
+            return null;
+        }
+
+        return profile;
+    }
+
+    public async Task RecordLoginAsync(
+        IncidentDbContext dbContext,
+        AccountProfileRecord profile,
+        bool isBootstrapAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (isBootstrapAdmin)
+        {
+            profile.Role = AccountRoles.Admin;
+            profile.Status = AccountStatuses.Active;
+        }
+
+        profile.LastLoginAt = now;
+        profile.UpdatedAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static string LocalExternalId(string email) => $"local:{NormalizeEmail(email)}";
 
     public async Task<AccountProfileResponse?> UpdateVerificationAsync(
         IncidentDbContext dbContext,
@@ -122,7 +212,7 @@ public sealed class AccountProfileService
         IncidentDbContext dbContext,
         CancellationToken cancellationToken = default)
     {
-        var profiles = await QueryGoogleAccounts(dbContext)
+        var profiles = await QueryAccounts(dbContext)
             .OrderByDescending(item => item.UpdatedAt)
             .ToListAsync(cancellationToken);
 
@@ -133,7 +223,7 @@ public sealed class AccountProfileService
         IncidentDbContext dbContext,
         CancellationToken cancellationToken = default)
     {
-        var profiles = await QueryGoogleAccounts(dbContext)
+        var profiles = await QueryAccounts(dbContext)
             .OrderByDescending(item => item.CreatedAt)
             .ToListAsync(cancellationToken);
 
@@ -210,10 +300,10 @@ public sealed class AccountProfileService
     }
 
     // Older rows came from Clerk and can no longer sign in, so they are hidden from account lists.
-    private static IQueryable<AccountProfileRecord> QueryGoogleAccounts(IncidentDbContext dbContext) =>
+    private static IQueryable<AccountProfileRecord> QueryAccounts(IncidentDbContext dbContext) =>
         dbContext.AccountProfiles
             .AsNoTracking()
-            .Where(item => item.ExternalId.StartsWith("google:"));
+            .Where(item => item.ExternalId.StartsWith("google:") || item.ExternalId.StartsWith("local:"));
 
     private static void ApplyGoogleIdentity(
         AccountProfileRecord profile,
