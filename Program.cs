@@ -16,6 +16,17 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 var demoOpenAccess = app.Configuration.GetValue("DemoOpenAccess", true);
 
+var authSettings = app.Services.GetRequiredService<AuthSettings>();
+if (string.IsNullOrWhiteSpace(authSettings.GoogleClientId))
+{
+    app.Logger.LogWarning("GOOGLE_CLIENT_ID is not set; Google login will be rejected.");
+}
+
+if (!authSettings.HasConfiguredSecret)
+{
+    app.Logger.LogWarning("AUTH_JWT_SECRET is missing or shorter than 32 characters; using a random key, so restarts sign everyone out.");
+}
+
 await app.Services.EnsureDatabaseReadyAsync();
 
 app.MapOpenApi();

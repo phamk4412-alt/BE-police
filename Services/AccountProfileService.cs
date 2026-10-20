@@ -6,20 +6,24 @@ namespace PoliceBackend.Services;
 
 public sealed class AccountProfileService
 {
-    public async Task<AccountProfileResponse> SyncAsync(
+    public Task<AccountProfileRecord?> FindAsync(
         IncidentDbContext dbContext,
-        AccountProfileSyncRequest request,
+        Guid id,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.ClerkUserId))
-        {
-            throw new InvalidOperationException("Thieu ClerkUserId de dong bo tai khoan.");
-        }
+        return dbContext.AccountProfiles.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+    }
 
-        var clerkUserId = request.ClerkUserId.Trim();
+    public async Task<AccountProfileRecord> UpsertGoogleAccountAsync(
+        IncidentDbContext dbContext,
+        GoogleIdentity identity,
+        bool isBootstrapAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        var externalId = $"google:{identity.Subject}";
         var now = DateTimeOffset.UtcNow;
         var profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
-            item => item.ClerkUserId == clerkUserId,
+            item => item.ExternalId == externalId,
             cancellationToken);
 
         var isNewProfile = profile is null;
@@ -28,13 +32,15 @@ public sealed class AccountProfileService
             profile = new AccountProfileRecord
             {
                 Id = Guid.NewGuid(),
-                ClerkUserId = clerkUserId,
+                ExternalId = externalId,
+                Role = AccountRoles.User,
+                Status = AccountStatuses.Active,
                 CreatedAt = now
             };
             dbContext.AccountProfiles.Add(profile);
         }
 
-        Apply(profile!, request, now);
+        ApplyGoogleIdentity(profile!, identity, isBootstrapAdmin, now);
 
         try
         {
@@ -42,9 +48,10 @@ public sealed class AccountProfileService
         }
         catch (DbUpdateException) when (isNewProfile)
         {
+            // Another request created the same account concurrently; update that row instead.
             dbContext.ChangeTracker.Clear();
             profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
-                item => item.ClerkUserId == clerkUserId,
+                item => item.ExternalId == externalId,
                 cancellationToken);
 
             if (profile is null)
@@ -52,109 +59,183 @@ public sealed class AccountProfileService
                 throw;
             }
 
-            Apply(profile, request, DateTimeOffset.UtcNow);
+            ApplyGoogleIdentity(profile, identity, isBootstrapAdmin, DateTimeOffset.UtcNow);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return ToResponse(profile!);
+        return profile!;
     }
 
-    public Task<AccountProfileResponse> SyncClerkAsync(
+    public async Task<AccountProfileResponse?> UpdateVerificationAsync(
         IncidentDbContext dbContext,
-        ClerkAccountSnapshot? clerk,
-        IdentityVerificationStateResponse state,
-        string? diditSessionId,
-        string? diditStatus,
-        bool? diditApproved,
+        Guid accountId,
+        bool? cccdVerified,
+        bool? faceScanned,
+        string? diditSessionId = null,
+        string? diditStatus = null,
+        bool? diditApproved = null,
         CancellationToken cancellationToken = default)
     {
-        if (clerk is null || string.IsNullOrWhiteSpace(clerk.ClerkUserId))
+        var profile = await FindAsync(dbContext, accountId, cancellationToken);
+        if (profile is null)
         {
-            throw new InvalidOperationException("Thieu thong tin Clerk de dong bo tai khoan.");
+            return null;
         }
 
-        return SyncAsync(
-            dbContext,
-            new AccountProfileSyncRequest(
-                clerk.ClerkUserId,
-                clerk.Email,
-                clerk.DisplayName,
-                clerk.Role,
-                clerk.Status,
-                state.CccdVerified,
-                state.FaceScanned,
-                diditSessionId,
-                diditStatus,
-                diditApproved),
-            cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+
+        if (cccdVerified.HasValue)
+        {
+            profile.CccdVerified = cccdVerified.Value;
+        }
+
+        if (faceScanned.HasValue)
+        {
+            profile.FaceScanned = faceScanned.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(diditSessionId))
+        {
+            profile.DiditSessionId = TrimToMaxLength(diditSessionId, 160);
+        }
+
+        if (!string.IsNullOrWhiteSpace(diditStatus))
+        {
+            profile.DiditStatus = TrimToMaxLength(diditStatus, 64);
+        }
+
+        if (diditApproved.HasValue)
+        {
+            profile.DiditApproved = diditApproved.Value;
+            if (diditApproved.Value)
+            {
+                profile.DiditVerifiedAt ??= now;
+            }
+        }
+
+        profile.UpdatedAt = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToResponse(profile);
     }
 
     public async Task<IReadOnlyCollection<AccountProfileResponse>> GetProfilesAsync(
         IncidentDbContext dbContext,
         CancellationToken cancellationToken = default)
     {
-        var profiles = await dbContext.AccountProfiles
-            .AsNoTracking()
+        var profiles = await QueryGoogleAccounts(dbContext)
             .OrderByDescending(item => item.UpdatedAt)
             .ToListAsync(cancellationToken);
 
         return profiles.Select(ToResponse).ToArray();
     }
 
-    private static void Apply(
+    public async Task<IReadOnlyCollection<AdminAccountResponse>> GetAdminAccountsAsync(
+        IncidentDbContext dbContext,
+        CancellationToken cancellationToken = default)
+    {
+        var profiles = await QueryGoogleAccounts(dbContext)
+            .OrderByDescending(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return profiles.Select(ToAdminResponse).ToArray();
+    }
+
+    public async Task<AdminAccountResponse?> UpdateRoleAsync(
+        IncidentDbContext dbContext,
+        Guid accountId,
+        string role,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedRole = AccountRoles.Normalize(role)
+            ?? throw new ArgumentException("Vai tro khong hop le.");
+
+        var profile = await FindAsync(dbContext, accountId, cancellationToken);
+        if (profile is null)
+        {
+            return null;
+        }
+
+        profile.Role = normalizedRole;
+        profile.UpdatedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToAdminResponse(profile);
+    }
+
+    public async Task<AdminAccountResponse?> UpdateStatusAsync(
+        IncidentDbContext dbContext,
+        Guid accountId,
+        string status,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedStatus = AccountStatuses.Normalize(status)
+            ?? throw new ArgumentException("Trang thai khong hop le.");
+
+        var profile = await FindAsync(dbContext, accountId, cancellationToken);
+        if (profile is null)
+        {
+            return null;
+        }
+
+        profile.Status = normalizedStatus;
+        profile.UpdatedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToAdminResponse(profile);
+    }
+
+    public async Task<bool> DeleteAsync(
+        IncidentDbContext dbContext,
+        Guid accountId,
+        CancellationToken cancellationToken = default)
+    {
+        var profile = await FindAsync(dbContext, accountId, cancellationToken);
+        if (profile is null)
+        {
+            return false;
+        }
+
+        dbContext.AccountProfiles.Remove(profile);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public static CurrentUserResponse ToCurrentUser(AccountProfileRecord profile)
+    {
+        return new CurrentUserResponse(
+            profile.Id.ToString(),
+            profile.Email,
+            profile.DisplayName,
+            profile.Role,
+            profile.Status,
+            profile.AvatarUrl);
+    }
+
+    // Older rows came from Clerk and can no longer sign in, so they are hidden from account lists.
+    private static IQueryable<AccountProfileRecord> QueryGoogleAccounts(IncidentDbContext dbContext) =>
+        dbContext.AccountProfiles
+            .AsNoTracking()
+            .Where(item => item.ExternalId.StartsWith("google:"));
+
+    private static void ApplyGoogleIdentity(
         AccountProfileRecord profile,
-        AccountProfileSyncRequest request,
+        GoogleIdentity identity,
+        bool isBootstrapAdmin,
         DateTimeOffset now)
     {
-        if (!string.IsNullOrWhiteSpace(request.Email))
+        profile.Email = TrimToMaxLength(identity.Email, 254);
+        profile.DisplayName = TrimToMaxLength(
+            string.IsNullOrWhiteSpace(identity.Name) ? identity.Email : identity.Name,
+            160);
+        profile.AvatarUrl = string.IsNullOrWhiteSpace(identity.Picture)
+            ? null
+            : TrimToMaxLength(identity.Picture, 512);
+
+        if (isBootstrapAdmin)
         {
-            profile.Email = TrimToMaxLength(request.Email, 254);
+            profile.Role = AccountRoles.Admin;
+            profile.Status = AccountStatuses.Active;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.DisplayName))
-        {
-            profile.DisplayName = TrimToMaxLength(request.DisplayName, 160);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Role))
-        {
-            profile.Role = TrimToMaxLength(request.Role, 32).ToLowerInvariant();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Status))
-        {
-            profile.Status = TrimToMaxLength(request.Status, 32).ToLowerInvariant();
-        }
-
-        if (request.CccdVerified.HasValue)
-        {
-            profile.CccdVerified = request.CccdVerified.Value;
-        }
-
-        if (request.FaceScanned.HasValue)
-        {
-            profile.FaceScanned = request.FaceScanned.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.DiditSessionId))
-        {
-            profile.DiditSessionId = TrimToMaxLength(request.DiditSessionId, 160);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.DiditStatus))
-        {
-            profile.DiditStatus = TrimToMaxLength(request.DiditStatus, 64);
-        }
-
-        if (request.DiditApproved.HasValue)
-        {
-            profile.DiditApproved = request.DiditApproved.Value;
-            if (request.DiditApproved.Value)
-            {
-                profile.DiditVerifiedAt ??= now;
-            }
-        }
-
+        profile.LastLoginAt = now;
         profile.UpdatedAt = now;
     }
 
@@ -164,11 +245,22 @@ public sealed class AccountProfileService
         return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
     }
 
+    private static AdminAccountResponse ToAdminResponse(AccountProfileRecord profile)
+    {
+        return new AdminAccountResponse(
+            profile.Id.ToString(),
+            profile.DisplayName,
+            profile.Email,
+            profile.Role,
+            profile.Status,
+            profile.CreatedAt,
+            profile.LastLoginAt);
+    }
+
     private static AccountProfileResponse ToResponse(AccountProfileRecord profile)
     {
         return new AccountProfileResponse(
             profile.Id,
-            profile.ClerkUserId,
             profile.Email,
             profile.DisplayName,
             profile.Role,
@@ -179,6 +271,7 @@ public sealed class AccountProfileService
             profile.DiditStatus,
             profile.DiditApproved,
             profile.DiditVerifiedAt,
+            profile.LastLoginAt,
             profile.CreatedAt,
             profile.UpdatedAt);
     }

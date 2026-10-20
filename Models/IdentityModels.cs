@@ -21,15 +21,11 @@ public sealed record UpdateFaceVerificationRequest(
 
 public sealed record CreateDiditSessionRequest(
     string CallbackUrl,
-    string? CallbackMethod = null,
-    ClerkAccountSnapshot? Clerk = null);
+    string? CallbackMethod = null);
 
 public sealed record DiditSessionResponse(
     string SessionId,
     string Url);
-
-public sealed record CompleteDiditSessionRequest(
-    ClerkAccountSnapshot? Clerk = null);
 
 public sealed record DiditDecisionResponse(
     string SessionId,

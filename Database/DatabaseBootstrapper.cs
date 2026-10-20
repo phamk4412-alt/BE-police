@@ -168,6 +168,8 @@ BEGIN
         [DiditStatus] nvarchar(64) NULL,
         [DiditApproved] bit NOT NULL,
         [DiditVerifiedAt] datetimeoffset NULL,
+        [AvatarUrl] nvarchar(512) NULL,
+        [LastLoginAt] datetimeoffset NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         [UpdatedAt] datetimeoffset NOT NULL,
         CONSTRAINT [PK_AccountProfiles] PRIMARY KEY ([Id])
@@ -204,6 +206,12 @@ IF COL_LENGTH(N'[AccountProfiles]', N'DiditApproved') IS NULL
 IF COL_LENGTH(N'[AccountProfiles]', N'DiditVerifiedAt') IS NULL
     ALTER TABLE [AccountProfiles] ADD [DiditVerifiedAt] datetimeoffset NULL;
 
+IF COL_LENGTH(N'[AccountProfiles]', N'AvatarUrl') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [AvatarUrl] nvarchar(512) NULL;
+
+IF COL_LENGTH(N'[AccountProfiles]', N'LastLoginAt') IS NULL
+    ALTER TABLE [AccountProfiles] ADD [LastLoginAt] datetimeoffset NULL;
+
 IF COL_LENGTH(N'[AccountProfiles]', N'CreatedAt') IS NULL
     ALTER TABLE [AccountProfiles] ADD [CreatedAt] datetimeoffset NOT NULL CONSTRAINT [DF_AccountProfiles_CreatedAt] DEFAULT SYSDATETIMEOFFSET();
 
@@ -239,6 +247,8 @@ CREATE TABLE IF NOT EXISTS "AccountProfiles" (
     "DiditStatus" character varying(64) NULL,
     "DiditApproved" boolean NOT NULL,
     "DiditVerifiedAt" timestamp with time zone NULL,
+    "AvatarUrl" character varying(512) NULL,
+    "LastLoginAt" timestamp with time zone NULL,
     "CreatedAt" timestamp with time zone NOT NULL,
     "UpdatedAt" timestamp with time zone NOT NULL,
     CONSTRAINT "PK_AccountProfiles" PRIMARY KEY ("Id")
@@ -254,6 +264,8 @@ ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "FaceScanned" boolean NOT
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditStatus" character varying(64) NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditApproved" boolean NOT NULL DEFAULT false;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "DiditVerifiedAt" timestamp with time zone NULL;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "AvatarUrl" character varying(512) NULL;
+ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "LastLoginAt" timestamp with time zone NULL;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "AccountProfiles" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP;
 

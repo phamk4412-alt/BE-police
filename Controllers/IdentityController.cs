@@ -54,6 +54,7 @@ public static class IdentityController
         DiditVerificationService diditVerificationService,
         IdentityVerificationSessionService identityVerificationSessionService,
         AccountProfileService accountProfileService,
+        AuthService authService,
         CancellationToken cancellationToken)
     {
         try
@@ -63,24 +64,16 @@ public static class IdentityController
                 request,
                 cancellationToken);
 
-            if (request.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
-            {
-                try
-                {
-                    await accountProfileService.SyncClerkAsync(
-                        dbContext,
-                        request.Clerk,
-                        identityVerificationSessionService.GetState(context),
-                        session.SessionId,
-                        "created",
-                        false,
-                        cancellationToken);
-                }
-                catch
-                {
-                    dbContext.ChangeTracker.Clear();
-                }
-            }
+            await SyncVerificationAsync(
+                context,
+                dbContext,
+                authService,
+                accountProfileService,
+                identityVerificationSessionService,
+                session.SessionId,
+                "created",
+                false,
+                cancellationToken);
 
             return Results.Ok(session);
         }
@@ -96,11 +89,11 @@ public static class IdentityController
     public static async Task<IResult> CompleteDiditSessionAsync(
         HttpContext context,
         string sessionId,
-        CompleteDiditSessionRequest? request,
         IncidentDbContext dbContext,
         DiditVerificationService diditVerificationService,
         IdentityVerificationSessionService identityVerificationSessionService,
         AccountProfileService accountProfileService,
+        AuthService authService,
         CancellationToken cancellationToken)
     {
         try
@@ -110,24 +103,16 @@ public static class IdentityController
                 sessionId,
                 cancellationToken);
 
-            if (request?.Clerk is not null && !string.IsNullOrWhiteSpace(request.Clerk.ClerkUserId))
-            {
-                try
-                {
-                    await accountProfileService.SyncClerkAsync(
-                        dbContext,
-                        request.Clerk,
-                        identityVerificationSessionService.GetState(context),
-                        decision.SessionId,
-                        decision.Status,
-                        decision.IsApproved,
-                        cancellationToken);
-                }
-                catch
-                {
-                    dbContext.ChangeTracker.Clear();
-                }
-            }
+            await SyncVerificationAsync(
+                context,
+                dbContext,
+                authService,
+                accountProfileService,
+                identityVerificationSessionService,
+                decision.SessionId,
+                decision.Status,
+                decision.IsApproved,
+                cancellationToken);
 
             return Results.Ok(decision);
         }
@@ -144,6 +129,42 @@ public static class IdentityController
                 title: "Khong the doc phan hoi Didit",
                 detail: "Didit tra ve phan hoi khong hop le.",
                 statusCode: StatusCodes.Status502BadGateway);
+        }
+    }
+
+    private static async Task SyncVerificationAsync(
+        HttpContext context,
+        IncidentDbContext dbContext,
+        AuthService authService,
+        AccountProfileService accountProfileService,
+        IdentityVerificationSessionService identityVerificationSessionService,
+        string diditSessionId,
+        string diditStatus,
+        bool diditApproved,
+        CancellationToken cancellationToken)
+    {
+        var accountId = authService.GetAccountId(context.User);
+        if (accountId is null)
+        {
+            return;
+        }
+
+        var state = identityVerificationSessionService.GetState(context);
+        try
+        {
+            await accountProfileService.UpdateVerificationAsync(
+                dbContext,
+                accountId.Value,
+                state.CccdVerified,
+                state.FaceScanned,
+                diditSessionId,
+                diditStatus,
+                diditApproved,
+                cancellationToken);
+        }
+        catch
+        {
+            dbContext.ChangeTracker.Clear();
         }
     }
 }

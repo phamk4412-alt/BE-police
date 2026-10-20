@@ -11,13 +11,12 @@ public sealed class AuthDebugMiddleware(RequestDelegate next, ILogger<AuthDebugM
         {
             var user = context.User;
             logger.LogInformation(
-                "POST /api/incidents auth state before authorization: isAuthenticated={IsAuthenticated}, authType={AuthType}, user={User}, role={Role}, hasAuthorizationHeader={HasAuthorizationHeader}, hasBackendCookie={HasBackendCookie}.",
+                "POST /api/incidents auth state before authorization: isAuthenticated={IsAuthenticated}, authType={AuthType}, user={User}, role={Role}, hasAuthorizationHeader={HasAuthorizationHeader}.",
                 user.Identity?.IsAuthenticated == true,
                 user.Identity?.AuthenticationType ?? "(none)",
                 user.Identity?.Name ?? "(none)",
                 user.FindFirstValue(ClaimTypes.Role) ?? "(none)",
-                context.Request.Headers.ContainsKey("Authorization"),
-                context.Request.Cookies.ContainsKey("PoliceSmartHub.Auth"));
+                context.Request.Headers.ContainsKey("Authorization"));
         }
 
         await next(context);
