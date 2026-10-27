@@ -201,11 +201,6 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IncidentAnalysisService>();
         services.AddSingleton<PolicePresenceService>();
-        services.AddHttpClient<DiditVerificationService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-        services.AddSingleton<IdentityVerificationSessionService>();
         services.AddSingleton<GoogleAuthService>();
         services.AddSingleton<AuthTokenService>();
         services.AddSingleton<PasswordService>();
