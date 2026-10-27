@@ -207,6 +207,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddSingleton<IdentityVerificationSessionService>();
         services.AddSingleton<GoogleAuthService>();
+        services.AddSingleton<AppleAuthService>();
         services.AddSingleton<AuthTokenService>();
         services.AddSingleton<PasswordService>();
         services.AddScoped<AuthService>();

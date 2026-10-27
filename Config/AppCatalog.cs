@@ -56,6 +56,7 @@ public static class AuditActions
     public const string LoginSuccess = "auth.login.success";
     public const string LoginFailed = "auth.login.failed";
     public const string Logout = "auth.logout";
+    public const string DeleteOwnAccount = "auth.account.delete";
     public const string AnalyzeIncident = "incident.analyze";
     public const string CreateIncident = "incident.create";
     public const string DeleteIncident = "incident.delete";

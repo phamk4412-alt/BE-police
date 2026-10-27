@@ -2,6 +2,9 @@ namespace PoliceBackend.Models;
 
 public sealed record GoogleLoginRequest(string? Credential);
 
+// Apple only sends the user's name on the first sign-in, and only to the app, so the app forwards it.
+public sealed record AppleLoginRequest(string? IdentityToken, string? DisplayName);
+
 public sealed record PasswordLoginRequest(string? Email, string? Password);
 
 public sealed record RegisterRequest(string? DisplayName, string? Email, string? Password);

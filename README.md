@@ -60,6 +60,7 @@ BACKEND/
    - `POLICE_SQLSERVER_CONNECTION`
    - `POLICE_POSTGRES_CONNECTION`
    - `GOOGLE_CLIENT_ID`: OAuth Client ID (Web) tu Google Cloud Console, giong voi `VITE_GOOGLE_CLIENT_ID` o frontend.
+   - `APPLE_CLIENT_IDS`: Bundle ID cua app iPhone (mac dinh `website.warteam.police`), dung de kiem tra token Dang nhap bang Apple. Doi Bundle ID thi sua bien nay.
    - `AUTH_JWT_SECRET`: chuoi ngau nhien >= 32 ky tu de ky token dang nhap. Thieu bien nay thi moi lan restart se dang xuat tat ca.
    - `POLICE_ADMIN_EMAILS`: danh sach email Google (cach nhau bang dau phay) tu dong duoc cap vai tro admin khi dang nhap.
 3. Chay:
