@@ -14,22 +14,51 @@ public sealed class AccountProfileService
         return dbContext.AccountProfiles.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
     }
 
-    public async Task<AccountProfileRecord> UpsertGoogleAccountAsync(
+    public Task<AccountProfileRecord> UpsertGoogleAccountAsync(
         IncidentDbContext dbContext,
         GoogleIdentity identity,
         bool isBootstrapAdmin,
         CancellationToken cancellationToken = default)
     {
-        var externalId = $"google:{identity.Subject}";
+        return UpsertExternalAccountAsync(
+            dbContext,
+            $"google:{identity.Subject}",
+            identity.Email,
+            (profile, now) => ApplyGoogleIdentity(profile, identity, isBootstrapAdmin, now),
+            cancellationToken);
+    }
+
+    public Task<AccountProfileRecord> UpsertAppleAccountAsync(
+        IncidentDbContext dbContext,
+        AppleIdentity identity,
+        string? displayName,
+        bool isBootstrapAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        return UpsertExternalAccountAsync(
+            dbContext,
+            $"apple:{identity.Subject}",
+            identity.Email,
+            (profile, now) => ApplyAppleIdentity(profile, identity, displayName, isBootstrapAdmin, now),
+            cancellationToken);
+    }
+
+    private async Task<AccountProfileRecord> UpsertExternalAccountAsync(
+        IncidentDbContext dbContext,
+        string externalId,
+        string email,
+        Action<AccountProfileRecord, DateTimeOffset> applyIdentity,
+        CancellationToken cancellationToken)
+    {
         var now = DateTimeOffset.UtcNow;
         var profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
             item => item.ExternalId == externalId,
             cancellationToken);
 
-        // Google has verified the email, so it may sign in to a password account registered with the same address.
+        // The provider has verified the email, so it may sign in to a password account registered with the same address.
         if (profile is null)
         {
-            var localId = LocalExternalId(identity.Email);
+            var localId = LocalExternalId(email);
             profile = await dbContext.AccountProfiles.FirstOrDefaultAsync(
                 item => item.ExternalId == localId,
                 cancellationToken);
@@ -49,7 +78,7 @@ public sealed class AccountProfileService
             dbContext.AccountProfiles.Add(profile);
         }
 
-        ApplyGoogleIdentity(profile!, identity, isBootstrapAdmin, now);
+        applyIdentity(profile!, now);
 
         try
         {
@@ -68,7 +97,7 @@ public sealed class AccountProfileService
                 throw;
             }
 
-            ApplyGoogleIdentity(profile, identity, isBootstrapAdmin, DateTimeOffset.UtcNow);
+            applyIdentity(profile, DateTimeOffset.UtcNow);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -303,7 +332,10 @@ public sealed class AccountProfileService
     private static IQueryable<AccountProfileRecord> QueryAccounts(IncidentDbContext dbContext) =>
         dbContext.AccountProfiles
             .AsNoTracking()
-            .Where(item => item.ExternalId.StartsWith("google:") || item.ExternalId.StartsWith("local:"));
+            .Where(item =>
+                item.ExternalId.StartsWith("google:") ||
+                item.ExternalId.StartsWith("apple:") ||
+                item.ExternalId.StartsWith("local:"));
 
     private static void ApplyGoogleIdentity(
         AccountProfileRecord profile,
@@ -318,6 +350,35 @@ public sealed class AccountProfileService
         profile.AvatarUrl = string.IsNullOrWhiteSpace(identity.Picture)
             ? null
             : TrimToMaxLength(identity.Picture, 512);
+
+        if (isBootstrapAdmin)
+        {
+            profile.Role = AccountRoles.Admin;
+            profile.Status = AccountStatuses.Active;
+        }
+
+        profile.LastLoginAt = now;
+        profile.UpdatedAt = now;
+    }
+
+    private static void ApplyAppleIdentity(
+        AccountProfileRecord profile,
+        AppleIdentity identity,
+        string? displayName,
+        bool isBootstrapAdmin,
+        DateTimeOffset now)
+    {
+        profile.Email = TrimToMaxLength(identity.Email, 254);
+
+        // Apple sends the name only on the first sign-in; later sign-ins keep the stored one.
+        if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            profile.DisplayName = TrimToMaxLength(displayName, 160);
+        }
+        else if (string.IsNullOrWhiteSpace(profile.DisplayName))
+        {
+            profile.DisplayName = TrimToMaxLength(identity.Email, 160);
+        }
 
         if (isBootstrapAdmin)
         {

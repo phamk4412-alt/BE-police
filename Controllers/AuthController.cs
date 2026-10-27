@@ -54,6 +54,53 @@ public static class AuthController
             cancellationToken);
     }
 
+    public static async Task<IResult> LoginWithAppleAsync(
+        HttpContext context,
+        AppleLoginRequest request,
+        IncidentDbContext dbContext,
+        AuthSettings authSettings,
+        AppleAuthService appleAuthService,
+        AuthTokenService authTokenService,
+        AccountProfileService accountProfileService,
+        AuditService auditService,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.IdentityToken))
+        {
+            return Results.BadRequest(new { message = "Thieu token Apple." });
+        }
+
+        AppleIdentity identity;
+        try
+        {
+            identity = await appleAuthService.ValidateIdentityTokenAsync(request.IdentityToken, cancellationToken);
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            return Results.Json(new { message = error.Message }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+        catch (InvalidOperationException)
+        {
+            return Results.Json(new { message = "Khong ket noi duoc may chu Apple." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        var profile = await accountProfileService.UpsertAppleAccountAsync(
+            dbContext,
+            identity,
+            request.DisplayName,
+            authSettings.IsBootstrapAdmin(identity.Email),
+            cancellationToken);
+
+        return await CompleteLoginAsync(
+            context,
+            dbContext,
+            profile,
+            "Apple",
+            auditService,
+            authTokenService,
+            cancellationToken);
+    }
+
     public static async Task<IResult> LoginWithPasswordAsync(
         HttpContext context,
         PasswordLoginRequest request,
@@ -203,6 +250,40 @@ public static class AuthController
         return profile is null
             ? Results.Unauthorized()
             : Results.Ok(AccountProfileService.ToCurrentUser(profile));
+    }
+
+    public static async Task<IResult> DeleteCurrentUserAsync(
+        HttpContext context,
+        IncidentDbContext dbContext,
+        AuthService authService,
+        AccountProfileService accountProfileService,
+        AuditService auditService,
+        CancellationToken cancellationToken)
+    {
+        var accountId = authService.GetAccountId(context.User);
+        if (accountId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var actor = authService.GetActorSnapshot(context.User);
+        if (!await accountProfileService.DeleteAsync(dbContext, accountId.Value, cancellationToken))
+        {
+            return Results.NotFound();
+        }
+
+        await auditService.WriteAsync(
+            dbContext,
+            context,
+            action: AuditActions.DeleteOwnAccount,
+            entityType: AuditEntities.Auth,
+            entityId: actor.Username,
+            summary: "Xoa tai khoan.",
+            detail: $"{actor.DisplayName} tu xoa tai khoan cua minh.",
+            actor: actor,
+            cancellationToken: cancellationToken);
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CompleteLoginAsync(

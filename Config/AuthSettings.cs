@@ -11,6 +11,7 @@ public sealed class AuthSettings
     public static readonly TimeSpan TokenLifetime = TimeSpan.FromDays(7);
 
     private const int MinSecretLength = 32;
+    private const string DefaultAppleClientId = "website.warteam.police";
 
     public AuthSettings(IConfiguration configuration)
     {
@@ -18,6 +19,10 @@ public sealed class AuthSettings
             configuration["GOOGLE_CLIENT_ID"] ??
             configuration["Google:ClientId"] ??
             string.Empty;
+
+        // Bundle IDs of the iPhone app; Sign in with Apple tokens are issued for them.
+        AppleClientIds = (configuration["APPLE_CLIENT_IDS"] ?? DefaultAppleClientId)
+            .Split([',', ';', ' ', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var secret = configuration["AUTH_JWT_SECRET"];
         HasConfiguredSecret = !string.IsNullOrWhiteSpace(secret) && secret.Length >= MinSecretLength;
@@ -33,6 +38,8 @@ public sealed class AuthSettings
     }
 
     public string GoogleClientId { get; }
+
+    public IReadOnlyList<string> AppleClientIds { get; }
 
     public SymmetricSecurityKey SigningKey { get; }
 
