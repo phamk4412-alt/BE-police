@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using PoliceBackend.Config;
 using PoliceBackend.Models;
 using PoliceBackend.Services;
 
@@ -14,6 +16,7 @@ public sealed class IncidentHub(
         return policePresenceService.GetActiveLocations();
     }
 
+    [Authorize(Policy = AuthorizationPolicies.PoliceOnly)]
     public async Task UpdatePoliceLocation(PoliceLocationRequest request)
     {
         var actor = authService.GetActorSnapshot(Context.User ?? new ClaimsPrincipal());
@@ -28,6 +31,7 @@ public sealed class IncidentHub(
         await Clients.All.SendAsync("PoliceLocationsSnapshot", policePresenceService.GetActiveLocations());
     }
 
+    [Authorize(Policy = AuthorizationPolicies.PoliceOnly)]
     public async Task EndPoliceShift()
     {
         var actor = authService.GetActorSnapshot(Context.User ?? new ClaimsPrincipal());

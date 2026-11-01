@@ -11,37 +11,37 @@ public static class SupportModule
         var api = app.MapGroup("/api");
 
         api.MapGet("/support/dispatch", SupportController.GetDispatchBoardAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.SupportOnly);
 
         api.MapGet("/support/dispatch-board", SupportController.GetDispatchBoardAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.SupportOnly);
 
         api.MapGet("/support/call-intake", SupportController.GetCallIntakeAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.SupportOnly);
 
         api.MapGet("/support/center-overview", SupportController.GetCenterOverviewAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.SupportOnly);
 
         api.MapDelete("/support/incidents/{id:guid}", SupportController.DeleteIncidentAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.SupportOnly);
 
         api.MapGet("/support/news", SupportNewsController.GetNewsAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         api.MapPost("/support/news", SupportNewsController.CreateNewsAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         api.MapPut("/support/news/{id:guid}", SupportNewsController.UpdateNewsAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         api.MapDelete("/support/news/{id:guid}", SupportNewsController.DeleteNewsAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         api.MapPatch("/support/news/{id:guid}/status", SupportNewsController.UpdateNewsStatusAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         api.MapPatch("/support/news/{id:guid}/featured", SupportNewsController.UpdateNewsFeaturedAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanManageNews);
 
         return app;
     }

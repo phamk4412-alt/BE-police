@@ -11,40 +11,40 @@ public static class PoliceModule
         var api = app.MapGroup("/api");
 
         api.MapGet("/incidents", PoliceController.GetIncidentBoardAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanTrackIncident);
 
         api.MapPatch("/incidents/{id:guid}/status", PoliceController.UpdateIncidentStatusAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapPut("/incidents/{id:guid}/status", SupportController.UpdateIncidentStatusAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapDelete("/incidents/{id:guid}", PoliceController.DeleteIncidentAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanUpdateIncidents);
 
         api.MapGet("/police/cases", PoliceController.GetIncidentBoardAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapPatch("/police/cases/{id:guid}/status", PoliceController.UpdateIncidentStatusAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapGet("/police/hotspots", PoliceController.GetHotspotsAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapGet("/police/patrol-vehicles", PoliceController.GetPatrolVehiclesAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapGet("/police/locations", PoliceController.GetActivePoliceLocations)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.CanTrackIncident);
 
         api.MapPost("/police/me/location", PoliceController.UpdateMyLocationAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapDelete("/police/me/location", PoliceController.EndMyShiftAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapPost("/police/me/location/end", PoliceController.EndMyShiftByRequestAsync)
-            .AllowAnonymous();
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         return app;
     }
