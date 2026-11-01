@@ -125,7 +125,7 @@ public sealed class IncidentService(IncidentAnalysisService analysisService)
             Status = assessment.ShouldCallEmergency
                 ? IncidentStatuses.DangXacMinh
                 : IncidentStatuses.MoiTiepNhan,
-            Source = "user",
+            Source = string.Equals(actor.Role, AppRoles.Police, StringComparison.OrdinalIgnoreCase) ? "police" : "user",
             ReporterName = actor.DisplayName,
             ReporterPhone = actor.Username,
             LastUpdatedBy = actor.DisplayName,

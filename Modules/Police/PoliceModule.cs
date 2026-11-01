@@ -1,5 +1,6 @@
 using PoliceBackend.Config;
 using PoliceBackend.Controllers;
+using PoliceBackend.Models;
 using PoliceBackend.Utils;
 
 namespace PoliceBackend.Modules.Police;
@@ -9,6 +10,11 @@ public static class PoliceModule
     public static IEndpointRouteBuilder MapPoliceModule(this IEndpointRouteBuilder app, bool demoOpenAccess)
     {
         var api = app.MapGroup("/api");
+
+        api.MapPost("/police/reports", PoliceController.CreateFieldReportAsync)
+            .Accepts<CreateIncidentRequest>("multipart/form-data")
+            .DisableAntiforgery()
+            .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
         api.MapGet("/incidents", PoliceController.GetIncidentBoardAsync)
             .RequireAuthorization(AuthorizationPolicies.CanTrackIncident);

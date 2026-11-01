@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Mvc;
 using PoliceBackend.Config;
 using PoliceBackend.Database;
 using PoliceBackend.Models;
@@ -9,6 +10,26 @@ namespace PoliceBackend.Controllers;
 
 public static class PoliceController
 {
+    public static async Task<IResult> CreateFieldReportAsync(
+        [FromForm] CreateIncidentRequest request,
+        HttpContext context,
+        IWebHostEnvironment environment,
+        IncidentDbContext dbContext,
+        IncidentService incidentService,
+        AuditService auditService,
+        AuthService authService,
+        IHubContext<IncidentHub> hubContext,
+        CancellationToken cancellationToken)
+    {
+        // Bind uploaded files explicitly; complex form binding may omit List<IFormFile>.
+        var form = await context.Request.ReadFormAsync(cancellationToken);
+        request.Images = form.Files
+            .Where(file => string.Equals(file.Name, nameof(CreateIncidentRequest.Images), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        return await UserController.CreateIncidentAsync(request, context, environment, dbContext,
+            incidentService, auditService, authService, hubContext, cancellationToken);
+    }
+
     public static async Task<IResult> GetIncidentBoardAsync(
         IncidentDbContext dbContext,
         IncidentService incidentService,
