@@ -85,7 +85,7 @@ public static class ServiceCollectionExtensions
                             return;
                         }
 
-                        // Role and status are read from the database on every request so admin changes apply immediately.
+                        // Account status is checked on every request. The active role is signed by the server.
                         var dbContext = context.HttpContext.RequestServices.GetRequiredService<IncidentDbContext>();
                         var profile = await dbContext.AccountProfiles
                             .AsNoTracking()
@@ -98,7 +98,8 @@ public static class ServiceCollectionExtensions
                             return;
                         }
 
-                        var role = ToAppRole(profile.Role);
+                        var selectedRole = context.Principal?.FindFirstValue(AuthTokenService.SelectedRoleClaim);
+                        var role = ToAppRole(selectedRole ?? profile.Role);
                         if (role is null)
                         {
                             context.Fail("Account role is invalid.");

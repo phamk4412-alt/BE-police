@@ -14,6 +14,8 @@ public static class SharedRoutes
         app.MapPost("/api/auth/login", AuthController.LoginWithPasswordAsync);
         app.MapPost("/api/auth/register", AuthController.RegisterAsync);
         app.MapPost("/api/auth/logout", AuthController.LogoutAsync);
+        app.MapPost("/api/auth/select-role", AuthController.SelectRoleAsync)
+            .RequireAuthorization();
         app.MapGet("/api/auth/me", AuthController.GetCurrentUserAsync)
             .RequireAuthorization();
         app.MapPost("/api/accounts/sync", AccountController.SyncAsync)

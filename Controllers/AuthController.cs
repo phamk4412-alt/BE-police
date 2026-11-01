@@ -202,7 +202,43 @@ public static class AuthController
         var profile = await accountProfileService.FindAsync(dbContext, accountId.Value, cancellationToken);
         return profile is null
             ? Results.Unauthorized()
-            : Results.Ok(AccountProfileService.ToCurrentUser(profile));
+            : Results.Ok(AccountProfileService.ToCurrentUser(profile) with
+            {
+                Role = context.User.FindFirst(AuthTokenService.SelectedRoleClaim)?.Value ?? profile.Role
+            });
+    }
+
+    public static async Task<IResult> SelectRoleAsync(
+        HttpContext context,
+        SelectRoleRequest request,
+        IncidentDbContext dbContext,
+        AuthService authService,
+        AccountProfileService accountProfileService,
+        AuthTokenService authTokenService,
+        CancellationToken cancellationToken)
+    {
+        var role = AccountRoles.Normalize(request.Role);
+        if (role is null)
+        {
+            return Results.BadRequest(new { message = "Vai trò không hợp lệ." });
+        }
+
+        var accountId = authService.GetAccountId(context.User);
+        if (accountId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var profile = await accountProfileService.FindAsync(dbContext, accountId.Value, cancellationToken);
+        if (profile is null || profile.Status != AccountStatuses.Active)
+        {
+            return Results.Unauthorized();
+        }
+
+        // Selection changes this session's role; it does not rewrite the account's database role.
+        var (token, expiresAt) = authTokenService.CreateToken(profile, role);
+        return Results.Ok(new LoginResponse(token, expiresAt,
+            AccountProfileService.ToCurrentUser(profile) with { Role = role }));
     }
 
     private static async Task<IResult> CompleteLoginAsync(
