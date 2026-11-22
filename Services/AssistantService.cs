@@ -40,13 +40,13 @@ Quy tắc:
         var image = request.ImageBase64?.Trim();
         if (string.IsNullOrEmpty(message) && string.IsNullOrEmpty(image))
         {
-            error = "Hay nhap cau hoi hoac gui mot anh.";
+            error = "Hãy nhập câu hỏi hoặc gửi một ảnh.";
             return false;
         }
 
         if (message.Length > MaxMessageLength)
         {
-            error = $"Cau hoi toi da {MaxMessageLength} ky tu.";
+            error = $"Câu hỏi tối đa {MaxMessageLength} ký tự.";
             return false;
         }
 
@@ -64,7 +64,7 @@ Quy tắc:
             var header = comma > 0 ? image[5..comma] : string.Empty;
             if (comma < 0 || !header.EndsWith(";base64", StringComparison.OrdinalIgnoreCase))
             {
-                error = "Anh phai o dang base64.";
+                error = "Ảnh phải ở dạng base64.";
                 return false;
             }
 
@@ -74,20 +74,20 @@ Quy tắc:
 
         if (!AllowedImageTypes.Contains(mediaType))
         {
-            error = "Chi ho tro anh JPG, PNG, WEBP hoac GIF.";
+            error = "Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF.";
             return false;
         }
 
         var buffer = new byte[base64.Length];
         if (!Convert.TryFromBase64String(base64, buffer, out var size))
         {
-            error = "Anh base64 khong hop le.";
+            error = "Ảnh base64 không hợp lệ.";
             return false;
         }
 
         if (size > MaxImageBytes)
         {
-            error = "Anh qua lon, toi da 4 MB.";
+            error = "Ảnh quá lớn, tối đa 4 MB.";
             return false;
         }
 
@@ -193,7 +193,7 @@ Quy tắc:
             var models = await lmStudio.GetModelsAsync(cancellationToken);
             var model = string.IsNullOrWhiteSpace(settings.Model) ? models.FirstOrDefault() : settings.Model;
             return model is null
-                ? new AssistantStatusResponse(false, lmStudio.BaseUrl, null, "LM Studio chua load model nao.")
+                ? new AssistantStatusResponse(false, lmStudio.BaseUrl, null, "LM Studio chưa load model nào.")
                 : new AssistantStatusResponse(true, lmStudio.BaseUrl, model, null);
         }
         catch (LmStudioException error)
