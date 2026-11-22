@@ -45,7 +45,7 @@ public static class AssistantController
             var result = await assistantService.ChatAsync(
                 dbContext,
                 accountId,
-                context.User.Identity?.Name ?? "Nguoi dung",
+                context.User.Identity?.Name ?? "Người dùng",
                 context.User.FindFirstValue(ClaimTypes.Role) ?? "User",
                 message,
                 imageDataUrl,

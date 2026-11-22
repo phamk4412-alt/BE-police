@@ -24,6 +24,10 @@ public sealed class LmStudioSettings
 
     public string BaseUrl { get; }
 
+    public bool IsLocalAddress =>
+        Uri.TryCreate(BaseUrl, UriKind.Absolute, out var uri) &&
+        (uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase));
+
     // Empty means: use the first model LM Studio has loaded.
     public string Model { get; }
 

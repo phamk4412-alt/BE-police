@@ -90,6 +90,9 @@ $env:LMSTUDIO_BASE_URL = "http://localhost:1235/v1"
 .\start-server.ps1
 ```
 
+Backend chay tren server (Render) khong goi duoc `localhost` cua laptop. Khi do mo LM Studio ra internet bang ngrok
+(`ngrok http 1235 --url=https://ten-ban.ngrok-free.app --host-header=rewrite`) va dat `LMSTUDIO_BASE_URL=https://ten-ban.ngrok-free.app/v1` trong Environment cua Render.
+
 API (can JWT, moi tai khoan chi thay tin nhan cua minh, luu trong bang `ChatMessages`):
 
 - `GET /api/assistant/status`: kiem tra ket noi LM Studio va model dang dung.

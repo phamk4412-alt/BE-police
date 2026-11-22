@@ -34,7 +34,7 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
         var model = (await GetModelsAsync(cancellationToken)).FirstOrDefault();
         if (string.IsNullOrWhiteSpace(model))
         {
-            throw new LmStudioException("LM Studio chua load model nao. Mo LM Studio, load model (vd qwen3-vl-8b) roi thu lai.");
+            throw new LmStudioException("LM Studio chưa load model nào. Mở LM Studio, load model (vd qwen3-vl-8b) rồi thử lại.");
         }
 
         _cachedModel = model;
@@ -59,7 +59,7 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException)
         {
-            throw new LmStudioException("LM Studio tra ve danh sach model khong doc duoc.", error);
+            throw new LmStudioException("LM Studio trả về danh sách model không đọc được.", error);
         }
     }
 
@@ -119,13 +119,13 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException)
         {
-            throw new LmStudioException("LM Studio tra ve du lieu khong doc duoc.", error);
+            throw new LmStudioException("LM Studio trả về dữ liệu không đọc được.", error);
         }
 
         var answer = CleanAnswer(content);
         if (string.IsNullOrWhiteSpace(answer))
         {
-            throw new LmStudioException("LM Studio khong tra loi. Thu hoi lai ngan gon hon nhe.");
+            throw new LmStudioException("LM Studio không trả lời. Bạn thử hỏi lại ngắn gọn hơn nhé.");
         }
 
         return answer;
@@ -139,6 +139,9 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
         }
 
+        // ngrok free tunnels show a warning page instead of the API unless this header is sent.
+        request.Headers.TryAddWithoutValidation("ngrok-skip-browser-warning", "true");
+
         return request;
     }
 
@@ -151,13 +154,15 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
         }
         catch (TaskCanceledException error) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new LmStudioException("LM Studio tra loi qua lau. Thu lai hoac dung model nho hon.", error);
+            throw new LmStudioException("LM Studio trả lời quá lâu. Thử lại hoặc dùng model nhỏ hơn.", error);
         }
         catch (HttpRequestException error)
         {
             logger.LogWarning(error, "Cannot reach LM Studio at {BaseUrl}.", settings.BaseUrl);
             throw new LmStudioException(
-                $"Khong ket noi duoc LM Studio tai {settings.BaseUrl}. Hay bat Developer > Start Server trong LM Studio.",
+                settings.IsLocalAddress
+                    ? $"Không kết nối được LM Studio tại {settings.BaseUrl}. Nếu backend chạy trên server (Render), nó không thấy LM Studio trên máy bạn: hãy mở LM Studio ra internet bằng ngrok và đặt LMSTUDIO_BASE_URL thành link đó. Nếu backend chạy trên máy bạn, hãy bật Developer > Start Server trong LM Studio và kiểm tra đúng port."
+                    : $"Không kết nối được LM Studio tại {settings.BaseUrl}. Kiểm tra LM Studio đã Start Server và ngrok còn đang chạy.",
                 error);
         }
 
@@ -166,7 +171,8 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
             var detail = await response.Content.ReadAsStringAsync(cancellationToken);
             logger.LogWarning("LM Studio returned {Status}: {Detail}", (int)response.StatusCode, detail);
             response.Dispose();
-            throw new LmStudioException($"LM Studio bao loi {(int)response.StatusCode}. Kiem tra model da duoc load chua.");
+            throw new LmStudioException(
+                $"LM Studio báo lỗi {(int)response.StatusCode}. Kiểm tra LM Studio đã Start Server, model đã được load và ngrok (nếu dùng) còn đang chạy.");
         }
 
         return response;
