@@ -10,7 +10,7 @@ namespace PoliceBackend.Services;
 public static partial class AssistantQuickReplies
 {
     public const string OffTopicReply =
-        "Bé Còi chỉ hỗ trợ các việc trong ứng dụng Cảnh sát thông minh: báo cáo sự việc, an ninh, an toàn, phòng chống lừa đảo và số khẩn cấp. Bạn hỏi Bé Còi về những chuyện đó nhé!";
+        "Bé Còi chỉ trả lời về an ninh, an toàn và cách dùng ứng dụng Cảnh sát thông minh thôi nhé!";
 
     private const string GreetingReply =
         "Chào bạn, mình là Bé Còi! Mình giúp bạn báo cáo sự việc, tư vấn an toàn, phòng chống lừa đảo và chỉ số khẩn cấp. Bạn cần giúp gì nào?";
