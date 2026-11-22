@@ -9,6 +9,7 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
     public DbSet<AuditLogRecord> AuditLogs => Set<AuditLogRecord>();
     public DbSet<NewsRecord> News => Set<NewsRecord>();
     public DbSet<AccountProfileRecord> AccountProfiles => Set<AccountProfileRecord>();
+    public DbSet<ChatMessageRecord> ChatMessages => Set<ChatMessageRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -147,6 +148,24 @@ public sealed class IncidentDbContext(DbContextOptions<IncidentDbContext> option
         news.HasIndex(item => item.IsFeatured);
         news.HasIndex(item => item.FeaturedOrder);
         news.HasIndex(item => item.Category);
+
+        var chatMessage = modelBuilder.Entity<ChatMessageRecord>();
+        chatMessage.ToTable("ChatMessages");
+        chatMessage.HasKey(item => item.Id);
+
+        chatMessage.Property(item => item.Role)
+            .HasMaxLength(16)
+            .IsRequired();
+
+        chatMessage.Property(item => item.Content)
+            .HasMaxLength(4000)
+            .IsRequired();
+
+        chatMessage.Property(item => item.Model)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        chatMessage.HasIndex(item => new { item.AccountId, item.CreatedAt });
 
         var accountProfile = modelBuilder.Entity<AccountProfileRecord>();
         accountProfile.ToTable("AccountProfiles");

@@ -2,6 +2,7 @@ using PoliceBackend.Config;
 using PoliceBackend.Database;
 using PoliceBackend.Middleware;
 using PoliceBackend.Modules.Admin;
+using PoliceBackend.Modules.Assistant;
 using PoliceBackend.Modules.News;
 using PoliceBackend.Modules.Police;
 using PoliceBackend.Modules.Support;
@@ -45,6 +46,7 @@ app.MapUserModule(demoOpenAccess);
 app.MapPoliceModule(demoOpenAccess);
 app.MapSupportModule(demoOpenAccess);
 app.MapAdminModule();
+app.MapAssistantModule();
 app.MapRealtimeEndpoints(demoOpenAccess);
 
 app.Run();

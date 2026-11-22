@@ -74,6 +74,31 @@ Hoac dung script:
 .\start-server.ps1
 ```
 
+## Tro ly AI "Be Coi" (LM Studio)
+
+Backend goi LM Studio (API kieu OpenAI) roi tra loi cho frontend, nen trang https khong phai goi thang `http://localhost`.
+
+1. Mo LM Studio, tai va load model (vd `qwen3-vl-8b`, model co "vl" thi doc duoc anh).
+2. Tab Developer: bat **Start Server**, ghi lai port (mac dinh 1234).
+3. Dat bien moi truong cho backend (chay cung may voi LM Studio):
+   - `LMSTUDIO_BASE_URL`: mac dinh `http://localhost:1234/v1`. Neu LM Studio chay port khac thi doi, vd `http://localhost:1235/v1`.
+   - `LMSTUDIO_MODEL`: de trong thi tu lay model dau tien dang load.
+   - Tuy chon: `LMSTUDIO_API_KEY`, `LMSTUDIO_TIMEOUT_SECONDS` (120), `LMSTUDIO_MAX_TOKENS` (700), `LMSTUDIO_TEMPERATURE` (0.6), `LMSTUDIO_HISTORY` (10 tin nhan gan nhat gui kem).
+
+```powershell
+$env:LMSTUDIO_BASE_URL = "http://localhost:1235/v1"
+.\start-server.ps1
+```
+
+API (can JWT, moi tai khoan chi thay tin nhan cua minh, luu trong bang `ChatMessages`):
+
+- `GET /api/assistant/status`: kiem tra ket noi LM Studio va model dang dung.
+- `GET /api/assistant/messages?limit=50`: lich su chat.
+- `POST /api/assistant/chat` voi `{ "Message": "...", "ImageBase64": "data:image/jpeg;base64,..." }` (anh tuy chon, toi da 4 MB).
+- `DELETE /api/assistant/messages`: xoa lich su.
+
+Bang `ChatMessages` tu tao khi backend khoi dong (SQL Server, PostgreSQL hoac in-memory).
+
 ## Dang nhap
 
 - Frontend lay ID token tu Google Identity Services va goi `POST /api/auth/google`.
