@@ -206,6 +206,13 @@ public static class ServiceCollectionExtensions
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+        var lmStudioSettings = new LmStudioSettings(configuration);
+        services.AddSingleton(lmStudioSettings);
+        services.AddHttpClient<LmStudioService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(lmStudioSettings.TimeoutSeconds);
+        });
+        services.AddScoped<AssistantService>();
         services.AddSingleton<IdentityVerificationSessionService>();
         services.AddSingleton<GoogleAuthService>();
         services.AddSingleton<AuthTokenService>();

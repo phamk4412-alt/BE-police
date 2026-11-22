@@ -23,6 +23,57 @@ public static class DatabaseBootstrapper
 
         await EnsureIncidentSchemaAsync(dbContext, configuration);
         await EnsureAccountProfileSchemaAsync(dbContext, configuration);
+        await EnsureChatMessageSchemaAsync(dbContext, configuration);
+    }
+
+    private static async Task EnsureChatMessageSchemaAsync(IncidentDbContext dbContext, IConfiguration configuration)
+    {
+        if (!dbContext.Database.IsRelational())
+        {
+            return;
+        }
+
+        var provider = DatabaseConfiguration.ResolveProvider(configuration);
+        switch (provider)
+        {
+            case DatabaseProviders.SqlServer:
+                await dbContext.Database.ExecuteSqlRawAsync("""
+IF OBJECT_ID(N'[ChatMessages]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [ChatMessages] (
+        [Id] uniqueidentifier NOT NULL,
+        [AccountId] uniqueidentifier NOT NULL,
+        [Role] nvarchar(16) NOT NULL,
+        [Content] nvarchar(4000) NOT NULL,
+        [HasImage] bit NOT NULL,
+        [Model] nvarchar(200) NOT NULL,
+        [CreatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_ChatMessages] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ChatMessages_AccountId_CreatedAt' AND object_id = OBJECT_ID(N'[ChatMessages]'))
+    CREATE INDEX [IX_ChatMessages_AccountId_CreatedAt] ON [ChatMessages] ([AccountId], [CreatedAt]);
+""");
+                break;
+
+            case DatabaseProviders.Postgres:
+                await dbContext.Database.ExecuteSqlRawAsync("""
+CREATE TABLE IF NOT EXISTS "ChatMessages" (
+    "Id" uuid NOT NULL,
+    "AccountId" uuid NOT NULL,
+    "Role" character varying(16) NOT NULL,
+    "Content" character varying(4000) NOT NULL,
+    "HasImage" boolean NOT NULL,
+    "Model" character varying(200) NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_ChatMessages" PRIMARY KEY ("Id")
+);
+
+CREATE INDEX IF NOT EXISTS "IX_ChatMessages_AccountId_CreatedAt" ON "ChatMessages" ("AccountId", "CreatedAt");
+""");
+                break;
+        }
     }
 
     private static async Task EnsureIncidentSchemaAsync(IncidentDbContext dbContext, IConfiguration configuration)
