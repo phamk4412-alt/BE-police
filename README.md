@@ -83,7 +83,7 @@ Backend goi LM Studio (API kieu OpenAI) roi tra loi cho frontend, nen trang http
 3. Dat bien moi truong cho backend (chay cung may voi LM Studio):
    - `LMSTUDIO_BASE_URL`: mac dinh `http://localhost:1234/v1`. Neu LM Studio chay port khac thi doi, vd `http://localhost:1235/v1`.
    - `LMSTUDIO_MODEL`: de trong thi tu lay model dau tien dang load.
-   - Tuy chon: `LMSTUDIO_API_KEY`, `LMSTUDIO_TIMEOUT_SECONDS` (120), `LMSTUDIO_MAX_TOKENS` (700), `LMSTUDIO_TEMPERATURE` (0.6), `LMSTUDIO_HISTORY` (10 tin nhan gan nhat gui kem).
+   - Tuy chon: `LMSTUDIO_API_KEY`, `LMSTUDIO_TIMEOUT_SECONDS` (120), `LMSTUDIO_MAX_TOKENS` (250), `LMSTUDIO_TEMPERATURE` (0.6), `LMSTUDIO_HISTORY` (4 tin nhan gan nhat gui kem). Cau chao, cam on, so khan cap, cach bao cao duoc tra loi ngay khong can LM Studio (Services/AssistantQuickReplies.cs); cau hoi ngoai chu de bi tu choi..
 
 ```powershell
 $env:LMSTUDIO_BASE_URL = "http://localhost:1235/v1"

@@ -9,25 +9,28 @@ public sealed class AssistantService(LmStudioService lmStudio, LmStudioSettings 
 {
     public const int MaxMessageLength = 2000;
     public const int MaxImageBytes = 4 * 1024 * 1024;
+    public const string QuickReplyModel = "tra-loi-nhanh";
 
     private static readonly string[] AllowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
     public static string BuildSystemPrompt(string displayName, string role) => $"""
-Bạn là "Bé Còi", trợ lý ảo thân thiện của ứng dụng Cảnh sát thông minh (TP. Hồ Chí Minh).
-Luôn trả lời bằng tiếng Việt có dấu, ngắn gọn (tối đa khoảng 120 từ), giọng văn gần gũi, lịch sự.
-Người đang chat: {displayName} (vai trò trong ứng dụng: {role}).
+Bạn là "Bé Còi", trợ lý ảo của ứng dụng Cảnh sát thông minh (TP. Hồ Chí Minh).
+Người đang chat: {displayName} (vai trò: {role}).
 
-Việc của bạn:
-- Hướng dẫn người dân cách báo cáo sự việc trong ứng dụng: chọn loại sự việc, mô tả ngắn gọn, chụp ảnh hiện trường, cập nhật vị trí.
-- Tư vấn an toàn, phòng chống lừa đảo, trộm cắp, xử lý tai nạn giao thông và các tình huống thường gặp.
-- Nếu người dùng gửi ảnh, mô tả những gì thấy được liên quan đến an ninh, an toàn và gợi ý bước tiếp theo.
+CHỈ trả lời các chủ đề sau:
+- Cách dùng ứng dụng: báo cáo sự việc (chọn loại, mô tả, chụp ảnh, bật vị trí, gửi), theo dõi báo cáo, tài khoản.
+- An ninh trật tự, an toàn cá nhân, phòng chống lừa đảo, trộm cắp, cướp giật, bạo lực.
+- Tai nạn giao thông, cháy nổ, cấp cứu và cách xử lý ban đầu; số khẩn cấp 113, 114, 115.
+- Ảnh người dùng gửi: chỉ nhận xét những gì liên quan đến an ninh, an toàn.
 
-Quy tắc:
-- Nếu có nguy hiểm đang diễn ra (bạo lực, vũ khí, cháy nổ, người bị thương): bảo người dùng gọi ngay 113 (công an), 114 (cứu hỏa), 115 (cấp cứu) trước mọi lời khuyên khác.
-- Không bịa thông tin pháp luật cụ thể; nếu không chắc, khuyên liên hệ cơ quan công an gần nhất.
-- Không bao giờ hỏi mật khẩu, mã OTP hay thông tin ngân hàng.
-- Bạn không tự tạo báo cáo hay gọi cảnh sát thay người dùng được; hãy hướng dẫn họ bấm nút tương ứng trong ứng dụng.
-- Từ chối lịch sự các yêu cầu trái pháp luật.
+Mọi câu hỏi khác (học tập, giải bài, lập trình, giải trí, thời tiết, nấu ăn, chính trị, chuyện riêng...): KHÔNG trả lời nội dung, chỉ đáp đúng một câu:
+"{AssistantQuickReplies.OffTopicReply}"
+
+Cách trả lời:
+- Tiếng Việt có dấu, tối đa 3 câu ngắn (khoảng 60 từ), đi thẳng vào việc cần làm, không chào hỏi rườm rà, không dùng tiêu đề hay emoji.
+- Nguy hiểm đang diễn ra (bạo lực, vũ khí, cháy, người bị thương): câu đầu tiên luôn là gọi ngay 113, 114 hoặc 115.
+- Không bịa luật cụ thể; nếu không chắc, khuyên liên hệ công an phường gần nhất.
+- Không bao giờ hỏi mật khẩu, OTP, thông tin ngân hàng. Từ chối yêu cầu trái pháp luật.
 /no_think
 """;
 
@@ -128,6 +131,12 @@ Quy tắc:
         string? imageDataUrl,
         CancellationToken cancellationToken)
     {
+        var quickReply = imageDataUrl is null ? AssistantQuickReplies.Find(message) : null;
+        if (quickReply is not null)
+        {
+            return await SaveExchangeAsync(dbContext, accountId, message, false, quickReply, QuickReplyModel, cancellationToken);
+        }
+
         var history = settings.HistoryLimit == 0
             ? []
             : await dbContext.ChatMessages
@@ -146,6 +155,18 @@ Quy tắc:
         var model = await lmStudio.ResolveModelAsync(cancellationToken);
         var answer = await lmStudio.ChatAsync(model, BuildSystemPrompt(displayName, role), turns, cancellationToken);
 
+        return await SaveExchangeAsync(dbContext, accountId, message, imageDataUrl is not null, answer, model, cancellationToken);
+    }
+
+    private static async Task<AssistantChatResult> SaveExchangeAsync(
+        IncidentDbContext dbContext,
+        Guid accountId,
+        string message,
+        bool hasImage,
+        string answer,
+        string model,
+        CancellationToken cancellationToken)
+    {
         var now = DateTimeOffset.UtcNow;
         var question = new ChatMessageRecord
         {
@@ -153,7 +174,7 @@ Quy tắc:
             AccountId = accountId,
             Role = ChatRoles.User,
             Content = message,
-            HasImage = imageDataUrl is not null,
+            HasImage = hasImage,
             Model = string.Empty,
             CreatedAt = now
         };
