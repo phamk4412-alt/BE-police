@@ -171,6 +171,13 @@ public sealed partial class LmStudioService(HttpClient httpClient, LmStudioSetti
             var detail = await response.Content.ReadAsStringAsync(cancellationToken);
             logger.LogWarning("LM Studio returned {Status}: {Detail}", (int)response.StatusCode, detail);
             response.Dispose();
+            if (detail.Contains("ERR_NGROK_3200", StringComparison.Ordinal) || detail.Contains("ERR_NGROK_8012", StringComparison.Ordinal))
+            {
+                throw new LmStudioException(detail.Contains("ERR_NGROK_3200", StringComparison.Ordinal)
+                    ? "Bé Còi đang nghỉ: ngrok trên laptop đã tắt. Mở lại cửa sổ ngrok trên laptop rồi thử lại nhé."
+                    : "Bé Còi đang nghỉ: ngrok vẫn chạy nhưng LM Studio trên laptop chưa bật server. Mở LM Studio, bật Model Server ở cổng 1235 rồi thử lại.");
+            }
+
             throw new LmStudioException(
                 $"LM Studio báo lỗi {(int)response.StatusCode}. Kiểm tra LM Studio đã Start Server, model đã được load và ngrok (nếu dùng) còn đang chạy.");
         }
