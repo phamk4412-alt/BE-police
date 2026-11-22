@@ -18,8 +18,8 @@ public sealed class LmStudioSettings
         ApiKey = (configuration["LMSTUDIO_API_KEY"] ?? configuration["LmStudio:ApiKey"] ?? string.Empty).Trim();
         TimeoutSeconds = Math.Clamp(configuration.GetValue("LMSTUDIO_TIMEOUT_SECONDS", 120), 10, 600);
         Temperature = Math.Clamp(configuration.GetValue("LMSTUDIO_TEMPERATURE", 0.6), 0, 2);
-        MaxTokens = Math.Clamp(configuration.GetValue("LMSTUDIO_MAX_TOKENS", 700), 64, 4096);
-        HistoryLimit = Math.Clamp(configuration.GetValue("LMSTUDIO_HISTORY", 10), 0, 40);
+        MaxTokens = Math.Clamp(configuration.GetValue("LMSTUDIO_MAX_TOKENS", 250), 64, 4096);
+        HistoryLimit = Math.Clamp(configuration.GetValue("LMSTUDIO_HISTORY", 4), 0, 40);
     }
 
     public string BaseUrl { get; }
