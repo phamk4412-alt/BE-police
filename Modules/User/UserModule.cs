@@ -19,6 +19,10 @@ public static class UserModule
             .DisableAntiforgery()
             .RequireAuthorization(AuthorizationPolicies.UserOnly);
 
+        api.MapPost("/user/photos/metadata", UserController.GetPhotoMetadataAsync)
+            .DisableAntiforgery()
+            .RequireAuthorization(AuthorizationPolicies.UserOnly);
+
         api.MapGet("/incidents/{id:guid}", UserController.GetIncidentByIdAsync)
             .RequireAuthorization(AuthorizationPolicies.CanTrackIncident);
 

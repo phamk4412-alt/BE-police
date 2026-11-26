@@ -44,6 +44,7 @@ partial class IncidentDbContextModelSnapshot : ModelSnapshot
             b.Property<string>("Detail").IsRequired().HasMaxLength(4000).HasColumnType("nvarchar(4000)");
             b.Property<string>("District").IsRequired().HasMaxLength(80).HasColumnType("nvarchar(80)");
             b.Property<string>("ImageUrls").IsRequired().HasColumnType("nvarchar(max)");
+            b.Property<string>("CaptureMetadata").HasColumnType("nvarchar(max)");
             b.Property<string>("LastUpdatedBy").IsRequired().HasMaxLength(120).HasColumnType("nvarchar(120)");
             b.Property<double>("Latitude").HasColumnType("float");
             b.Property<double>("Longitude").HasColumnType("float");

@@ -105,6 +105,7 @@ BEGIN
         [ReporterPhone] nvarchar(64) NOT NULL,
         [LastUpdatedBy] nvarchar(120) NOT NULL,
         [ImageUrls] nvarchar(max) NOT NULL,
+        [CaptureMetadata] nvarchar(max) NULL,
         [CreatedAt] datetimeoffset NOT NULL,
         [UpdatedAt] datetimeoffset NOT NULL,
         CONSTRAINT [PK_Incidents] PRIMARY KEY ([Id])
@@ -166,6 +167,7 @@ CREATE TABLE IF NOT EXISTS "Incidents" (
     "ReporterPhone" character varying(64) NOT NULL,
     "LastUpdatedBy" character varying(120) NOT NULL,
     "ImageUrls" text NOT NULL,
+    "CaptureMetadata" text NULL,
     "CreatedAt" timestamp with time zone NOT NULL,
     "UpdatedAt" timestamp with time zone NOT NULL,
     CONSTRAINT "PK_Incidents" PRIMARY KEY ("Id")

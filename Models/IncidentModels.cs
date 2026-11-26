@@ -18,6 +18,7 @@ public sealed class IncidentRecord
     public string ReporterPhone { get; set; } = string.Empty;
     public string LastUpdatedBy { get; set; } = string.Empty;
     public string ImageUrls { get; set; } = string.Empty;
+    public string? CaptureMetadata { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
@@ -31,7 +32,14 @@ public sealed class CreateIncidentRequest
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public List<IFormFile> Images { get; set; } = [];
+    public string? Address { get; set; }
+    public string? PhotoMetadata { get; set; }
+    public Guid? SubmissionId { get; set; }
 }
+
+public sealed record CapturePhotoInput(DateTimeOffset? CapturedAt, double? Latitude, double? Longitude);
+public sealed record CapturePhoto(
+    string Url, string? CapturedAt, string? TimeSource, double? Latitude, double? Longitude, string? LocationSource);
 
 public sealed record UpdateIncidentStatusRequest(string Status);
 
