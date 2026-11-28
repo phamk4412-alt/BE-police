@@ -6,14 +6,17 @@ using PoliceBackend.Config;
 
 namespace PoliceBackend.Services;
 
-public sealed record OnlinePoliceAccount(Guid AccountId, string DisplayName, DateTimeOffset OnlineSince);
+public sealed record PoliceShift(string Status, DateTimeOffset? StartedAt);
+public sealed record OnlinePoliceAccount(Guid AccountId, string DisplayName, DateTimeOffset OnlineSince, string ShiftStatus);
 
 public sealed class PoliceOnlineService(TimeProvider clock)
 {
     private static readonly TimeSpan Lease = TimeSpan.FromSeconds(75);
+    private static readonly PoliceShift OffDuty = new("off-duty", null);
     private readonly object _gate = new();
     private readonly Dictionary<(Guid AccountId, string TokenId), Connection> _connections = new();
     private readonly Dictionary<(Guid AccountId, string TokenId), DateTimeOffset> _ended = new();
+    private readonly Dictionary<Guid, PoliceShift> _shifts = new();
 
     public void Start(Guid accountId, string tokenId, string name, DateTimeOffset expiresAt) =>
         Touch(new Session((accountId, tokenId), expiresAt), name);
@@ -21,24 +24,52 @@ public sealed class PoliceOnlineService(TimeProvider clock)
     public bool Heartbeat(HttpContext context)
     {
         var session = GetSession(context, clock.GetUtcNow());
-        return session is not null && Touch(session, context.User.Identity?.Name ?? "");
+        return session is not null && Touch(session, context.User.Identity?.Name ?? "") is not null;
     }
 
-    private bool Touch(Session session, string name)
+    public PoliceShift? GetOrUpdateShift(HttpContext context, string? status = null)
+    {
+        var now = clock.GetUtcNow();
+        if (GetSession(context, now) is not { } session)
+            return null;
+
+        if (status is not null)
+            return Touch(session, context.User.Identity?.Name ?? "", status);
+
+        lock (_gate)
+        {
+            Prune(now);
+            return _ended.ContainsKey(session.Key) ? null : _shifts.GetValueOrDefault(session.Key.AccountId, OffDuty);
+        }
+    }
+
+    private PoliceShift? Touch(Session session, string name, string? status = null)
     {
         lock (_gate)
         {
             var now = clock.GetUtcNow();
             if (session.ExpiresAt <= now)
-                return false;
+                return null;
             Prune(now);
             if (_ended.ContainsKey(session.Key))
-                return false;
+                return null;
 
             var since = _connections.TryGetValue(session.Key, out var previous) ? previous.Since : now;
             var until = session.ExpiresAt < now + Lease ? session.ExpiresAt : now + Lease;
             _connections[session.Key] = new Connection(name, since, until);
-            return true;
+            var shift = _shifts.GetValueOrDefault(session.Key.AccountId, OffDuty);
+            if (status is null || status == shift.Status)
+                return shift;
+
+            if (status == "off-duty")
+            {
+                _shifts.Remove(session.Key.AccountId);
+                return OffDuty;
+            }
+
+            shift = new PoliceShift(status, shift.StartedAt ?? now);
+            _shifts[session.Key.AccountId] = shift;
+            return shift;
         }
     }
 
@@ -52,6 +83,7 @@ public sealed class PoliceOnlineService(TimeProvider clock)
         {
             Prune(now);
             _connections.Remove(session.Key);
+            DropDisconnectedShifts();
             // An already in-flight heartbeat must not restore the ended session.
             _ended[session.Key] = session.ExpiresAt;
         }
@@ -67,7 +99,8 @@ public sealed class PoliceOnlineService(TimeProvider clock)
                 .Select(group => new OnlinePoliceAccount(
                     group.Key,
                     group.MaxBy(entry => entry.Value.Until).Value.Name,
-                    group.Min(entry => entry.Value.Since)))
+                    group.Min(entry => entry.Value.Since),
+                    _shifts.GetValueOrDefault(group.Key, OffDuty).Status))
                 .OrderBy(account => account.DisplayName)
                 .ThenBy(account => account.AccountId)
                 .ToArray();
@@ -81,6 +114,18 @@ public sealed class PoliceOnlineService(TimeProvider clock)
 
         foreach (var (key, expiresAt) in _ended)
             if (expiresAt <= now) _ended.Remove(key);
+
+        DropDisconnectedShifts();
+    }
+
+    private void DropDisconnectedShifts()
+    {
+        if (_shifts.Count == 0)
+            return;
+
+        var connectedAccounts = _connections.Keys.Select(key => key.AccountId).ToHashSet();
+        foreach (var accountId in _shifts.Keys)
+            if (!connectedAccounts.Contains(accountId)) _shifts.Remove(accountId);
     }
 
     private static Session? GetSession(HttpContext context, DateTimeOffset now)

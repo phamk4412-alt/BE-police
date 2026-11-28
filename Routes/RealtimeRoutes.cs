@@ -15,6 +15,20 @@ public static class RealtimeRoutes
             presence.Heartbeat(context) ? Results.NoContent() : Results.Unauthorized())
             .RequireAuthorization(AuthorizationPolicies.PoliceOnly);
 
+        app.MapGet("/api/police/online/shift", (HttpContext context, PoliceOnlineService presence) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return presence.GetOrUpdateShift(context) is { } shift ? Results.Ok(shift) : Results.Unauthorized();
+        }).RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+
+        app.MapPut("/api/police/online/shift", (PoliceShiftUpdate request, HttpContext context, PoliceOnlineService presence) =>
+        {
+            if (request.Status is not ("off-duty" or "on-duty" or "break"))
+                return Results.BadRequest();
+
+            return presence.GetOrUpdateShift(context, request.Status) is { } shift ? Results.Ok(shift) : Results.Unauthorized();
+        }).RequireAuthorization(AuthorizationPolicies.PoliceOnly);
+
         app.MapGet("/api/support/police/online", (HttpContext context, PoliceOnlineService presence) =>
         {
             context.Response.Headers.CacheControl = "no-store";
@@ -22,4 +36,6 @@ public static class RealtimeRoutes
         }).RequireAuthorization(AuthorizationPolicies.SupportOnly);
         return app;
     }
+
+    private sealed record PoliceShiftUpdate(string? Status);
 }
