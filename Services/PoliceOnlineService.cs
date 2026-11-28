@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using PoliceBackend.Config;
-using PoliceBackend.Models;
 
 namespace PoliceBackend.Services;
 
@@ -21,9 +20,6 @@ public sealed class PoliceOnlineService(TimeProvider clock)
 
     public bool Heartbeat(HttpContext context)
     {
-        if (AccountRoles.Normalize(context.User.FindFirstValue(AuthTokenService.AssignedRoleClaim)) != AccountRoles.Police)
-            return false;
-
         var session = GetSession(context, clock.GetUtcNow());
         return session is not null && Touch(session, context.User.Identity?.Name ?? "");
     }

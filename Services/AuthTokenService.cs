@@ -9,7 +9,6 @@ namespace PoliceBackend.Services;
 public sealed class AuthTokenService(AuthSettings authSettings, PoliceOnlineService policeOnline)
 {
     public const string SelectedRoleClaim = "selected_role";
-    public const string AssignedRoleClaim = "assigned_account_role";
     private readonly JsonWebTokenHandler _handler = new();
 
     public (string Token, DateTimeOffset ExpiresAt) CreateToken(AccountProfileRecord profile, string? selectedRole = null)
@@ -37,8 +36,7 @@ public sealed class AuthTokenService(AuthSettings authSettings, PoliceOnlineServ
             Subject = identity
         });
 
-        if (AccountRoles.Normalize(profile.Role) == AccountRoles.Police &&
-            AccountRoles.Normalize(selectedRole ?? profile.Role) == AccountRoles.Police)
+        if (AccountRoles.Normalize(selectedRole ?? profile.Role) == AccountRoles.Police)
         {
             policeOnline.Start(profile.Id, tokenId, profile.DisplayName,
                 DateTimeOffset.FromUnixTimeSeconds(expiresAt.ToUnixTimeSeconds()));

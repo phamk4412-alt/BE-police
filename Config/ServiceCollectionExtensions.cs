@@ -112,7 +112,6 @@ public static class ServiceCollectionExtensions
                             identity.AddClaim(new Claim(ClaimTypes.Name, profile.DisplayName));
                             identity.AddClaim(new Claim(ClaimTypes.Email, profile.Email));
                             identity.AddClaim(new Claim(ClaimTypes.Role, role));
-                            identity.AddClaim(new Claim(AuthTokenService.AssignedRoleClaim, profile.Role));
                         }
                     },
                     OnChallenge = context =>
