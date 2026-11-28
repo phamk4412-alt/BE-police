@@ -166,10 +166,12 @@ public static class AuthController
         IncidentDbContext dbContext,
         AuthService authService,
         AuditService auditService,
+        PoliceOnlineService policeOnline,
         CancellationToken cancellationToken)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
+            policeOnline.End(context);
             var actor = authService.GetActorSnapshot(context.User);
             await auditService.WriteAsync(
                 dbContext,
@@ -215,6 +217,7 @@ public static class AuthController
         AuthService authService,
         AccountProfileService accountProfileService,
         AuthTokenService authTokenService,
+        PoliceOnlineService policeOnline,
         CancellationToken cancellationToken)
     {
         var role = AccountRoles.Normalize(request.Role);
@@ -237,6 +240,7 @@ public static class AuthController
 
         // Selection changes this session's role; it does not rewrite the account's database role.
         var (token, expiresAt) = authTokenService.CreateToken(profile, role);
+        policeOnline.End(context);
         return Results.Ok(new LoginResponse(token, expiresAt,
             AccountProfileService.ToCurrentUser(profile) with { Role = role }));
     }

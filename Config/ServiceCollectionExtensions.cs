@@ -112,6 +112,7 @@ public static class ServiceCollectionExtensions
                             identity.AddClaim(new Claim(ClaimTypes.Name, profile.DisplayName));
                             identity.AddClaim(new Claim(ClaimTypes.Email, profile.Email));
                             identity.AddClaim(new Claim(ClaimTypes.Role, role));
+                            identity.AddClaim(new Claim(AuthTokenService.AssignedRoleClaim, profile.Role));
                         }
                     },
                     OnChallenge = context =>
@@ -202,6 +203,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IncidentAnalysisService>();
         services.AddSingleton<PolicePresenceService>();
+        services.AddSingleton(_ => new PoliceOnlineService(TimeProvider.System));
         services.AddHttpClient<DiditVerificationService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

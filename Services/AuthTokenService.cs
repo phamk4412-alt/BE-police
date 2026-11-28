@@ -6,16 +6,19 @@ using PoliceBackend.Models;
 
 namespace PoliceBackend.Services;
 
-public sealed class AuthTokenService(AuthSettings authSettings)
+public sealed class AuthTokenService(AuthSettings authSettings, PoliceOnlineService policeOnline)
 {
     public const string SelectedRoleClaim = "selected_role";
+    public const string AssignedRoleClaim = "assigned_account_role";
     private readonly JsonWebTokenHandler _handler = new();
 
     public (string Token, DateTimeOffset ExpiresAt) CreateToken(AccountProfileRecord profile, string? selectedRole = null)
     {
+        var tokenId = Guid.NewGuid().ToString("N");
         var identity = new ClaimsIdentity(
         [
             new Claim(JwtRegisteredClaimNames.Sub, profile.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, tokenId),
             new Claim(JwtRegisteredClaimNames.Email, profile.Email)
         ]);
         if (selectedRole is not null)
@@ -33,6 +36,13 @@ public sealed class AuthTokenService(AuthSettings authSettings)
             SigningCredentials = new SigningCredentials(authSettings.SigningKey, SecurityAlgorithms.HmacSha256),
             Subject = identity
         });
+
+        if (AccountRoles.Normalize(profile.Role) == AccountRoles.Police &&
+            AccountRoles.Normalize(selectedRole ?? profile.Role) == AccountRoles.Police)
+        {
+            policeOnline.Start(profile.Id, tokenId, profile.DisplayName,
+                DateTimeOffset.FromUnixTimeSeconds(expiresAt.ToUnixTimeSeconds()));
+        }
 
         return (token, expiresAt);
     }
